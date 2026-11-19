@@ -270,7 +270,7 @@
     const edgeOk = (a) => (a.mask & st.src) && (!App.isOriginal(a.mask) || a.rp >= st.rp || !(a.mask & 3));
     const nodeOk = (n, a) => !st.org || (st.org === "__none" ? !a.loc.length : a.loc.includes(st.org));
     const renderer = new Sigma(G, $("#sigma"), {
-      labelRenderedSizeThreshold: 7, labelColor: { color: App.cssVar("--ink") }, defaultEdgeColor: App.cssVar("--edge"), zIndex: true,
+      labelRenderedSizeThreshold: 7, labelColor: { color: App.cssVar("--ink") }, defaultEdgeColor: App.cssVar("--net-edge"), zIndex: true,
       nodeReducer: (n, a) => {
         const r = { ...a };
         if (!nodeOk(n, a)) { r.hidden = true; return r; }
@@ -336,7 +336,7 @@
       if (i == null) i = net.nodes.findIndex((g) => g.toUpperCase() === e.target.value.trim().toUpperCase());
       if (i != null && i >= 0) select(i, true); else e.target.setCustomValidity("Not in the network"), e.target.reportValidity(), setTimeout(() => e.target.setCustomValidity(""), 1500);
     };
-    const onTheme = () => { renderer.setSetting("labelColor", { color: App.cssVar("--ink") }); renderer.setSetting("defaultEdgeColor", App.cssVar("--edge")); refresh(); };
+    const onTheme = () => { renderer.setSetting("labelColor", { color: App.cssVar("--ink") }); renderer.setSetting("defaultEdgeColor", App.cssVar("--net-edge")); refresh(); };
     window.addEventListener("themechange", onTheme);
     unmount(() => { renderer.kill(); window.removeEventListener("themechange", onTheme); });
     count();
