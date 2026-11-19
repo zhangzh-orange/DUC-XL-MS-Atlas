@@ -1,0 +1,3 @@
+# Source and intermediate data stay local; the site reads its own copy in site/data/.
+/data/
+*.xlsx
