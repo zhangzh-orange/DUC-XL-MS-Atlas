@@ -57,9 +57,7 @@ ORGANELLE_LABELS = {
     "plasma_membrane": "Plasma membrane",
 }
 # Edge source bitmask
-# 32 = DUC-XL-MS edge whose cell line could not be traced back to Table S1
-SRC = {"HEK293": 1, "Jurkat": 2, "BioPlex": 4, "OpenCell": 8, "EndoMap": 16,
-       "DUC-XL-MS": 32}
+SRC = {"HEK293": 1, "Jurkat": 2, "BioPlex": 4, "OpenCell": 8, "EndoMap": 16}
 
 XL_RE = re.compile(r"(?:sp|tr)\|([^|]+)\|\S+ \((\d+)\)-(?:sp|tr)\|([^|]+)\|\S+ \((\d+)\)")
 ENTRY_RE = re.compile(r"(?:sp|tr)\|([^|]+)\|([A-Z0-9]+)_HUMAN")
@@ -130,10 +128,21 @@ def read_uniprot_topology(path):
     return out
 
 
+def read_uniprot_genes(path):
+    """Accession -> primary gene symbol in the pinned UniProt release; Table S5 was
+    built by collapsing Table S1 accessions to gene symbols with this release."""
+    import csv
+    import gzip
+    with gzip.open(path, "rt") as fh:
+        return {r["Entry"]: re.split(r"[;\s]+", r["Gene Names"].strip())[0]
+                for r in csv.DictReader(fh, delimiter="\t") if r["Gene Names"].strip()}
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     seqs, fasta_gene = read_fasta(RAW / "sequences" / "LOP_DSBSO_target.fasta")
     up_topo = read_uniprot_topology(RAW / "sequences" / "uniprot_reviewed_human.tsv.gz")
+    up_gene = read_uniprot_genes(RAW / "sequences" / "uniprot_reviewed_human.tsv.gz")
 
     # ── Table S2: annotation of all cross-linked proteins + markers ──────────
     s2 = TAB / "Supplementary_Table_2_HEK_markers.xlsx"
@@ -222,9 +231,18 @@ def main():
                 alias_to_acc.setdefault(al, a)
     for a in sorted(set(gene) | set(xl)):
         alias_to_acc[gene.get(a, a)] = a
+    for a in sorted(set(gene) | set(xl)):  # pinned UniProt symbol wins (same mapping as Table S5)
+        if a in up_gene:
+            alias_to_acc[up_gene[a]] = a
+
+    # Table S5 writes "GENE_ACCESSION" when one symbol covers several accessions (e.g. TMPO_P42166)
+    for a in sorted(set(gene) | set(xl)):
+        if a in up_gene:
+            alias_to_acc[f"{up_gene[a]}_{a}"] = a
 
     def aliases(a):
-        return {x for x in (a, fasta_gene.get(a), gene.get(a), entry_gene.get(a)) if x}
+        g = up_gene.get(a)
+        return {x for x in (a, g, f"{g}_{a}" if g else None, fasta_gene.get(a), gene.get(a), entry_gene.get(a)) if x}
 
     # PPI residue-pair counts per cell line (inter only), keyed by alias pair
     ppi_counts = defaultdict(lambda: [0, 0])
@@ -268,7 +286,6 @@ def main():
             mask |= (SRC["HEK293"] if c[0] else 0) | (SRC["Jurkat"] if c[1] else 0)
             if mask == 0:
                 unresolved += 1
-                mask = SRC["DUC-XL-MS"]
         else:
             for s in str(src).split(";"):
                 mask |= SRC.get(s.strip(), 0)
@@ -292,6 +309,11 @@ def main():
         slim_by[str(r["Motif Protein ID"]).upper()].append(r)
     cc_by = {r["Protein ID"]: r.get("Subcellular Location (CC)") for r in records(ann)}
 
+    # proteins outside Table S2 take their symbol from the pinned UniProt release
+    s2_accs = set(ann.iloc[:, 0])
+    for a_ in list(gene):
+        if a_ not in s2_accs and a_ in up_gene:
+            gene[a_] = up_gene[a_]
     node_acc = [alias_to_acc.get(g) for g in nodes]
     for a in node_acc:  # network-only proteins (group members) get a page too
         if a and a not in gene:
@@ -307,7 +329,7 @@ def main():
                 deg[g][0] += 1
             if e[2] & 2:
                 deg[g][1] += 1
-            if e[2] & 28 and not e[2] & 35:
+            if e[2] & 28 and not e[2] & 3:
                 deg[g][2] += 1
 
     cols = {k: [] for k in ("acc", "gene", "name", "len", "loc", "tier", "src",
@@ -412,6 +434,9 @@ def main():
     }
     dump(meta, OUT / "meta.json")
     print(json.dumps(meta["counts"], indent=1))
+    # every directly detected edge must be traced to HEK293 and/or Jurkat in Table S1
+    if unresolved:
+        raise SystemExit(f"{unresolved} original Table S5 edges could not be matched to Table S1")
     print("nodes", len(nodes), "edges", len(edges), "proteins", len(accs),
           "unresolved original edges", unresolved,
           "nodes without accession", sum(a is None for a in node_acc))

@@ -41,10 +41,10 @@ App.orgChips = (loc) => App.locList(loc).map((c) =>
 App.protLink = (acc, label) => acc && App.idx.byAcc.has(acc)
   ? `<a href="#/protein/${esc(acc)}">${esc(label ?? App.geneOf(acc))}</a>` : esc(label ?? acc);
 
-App.SRC_NAMES = ["HEK293", "Jurkat", "BioPlex", "OpenCell", "EndoMap", "DUC-XL-MS"];
+App.SRC_NAMES = ["HEK293", "Jurkat", "BioPlex", "OpenCell", "EndoMap"];
 App.srcBadges = (mask) => App.SRC_NAMES.filter((_, i) => mask & (1 << i))
   .map((s) => `<span class="badge b-${s}">${s === "EndoMap" ? "EndoMAP" : s}</span>`).join("");
-App.isOriginal = (mask) => (mask & (1 | 2 | 32)) !== 0;
+App.isOriginal = (mask) => (mask & (1 | 2)) !== 0;
 
 /* tooltip */
 const tip = () => $("#tooltip");

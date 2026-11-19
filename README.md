@@ -53,8 +53,9 @@ The site has no access control: anyone with the URL can view and download the da
 ## Notes
 
 * Organelle colours: Paul Tol *muted* (colour-blind safe), hue-matched to the Fig. 1A palette.
-* 620 original edges in Table S5 cannot be traced to a cell line by gene symbol; they are labelled
-  "DUC-XL-MS (cell line unresolved)". 224 network nodes have no UniProt accession match and have no protein page.
+* Table S5 gene symbols are matched to Table S1 accessions with the pinned UniProt release
+  (`uniprot_reviewed_human.tsv.gz`, the same mapping used to build Table S5), so every directly detected
+  edge is assigned to HEK293 and/or Jurkat. 3 augmented-only nodes (HNRNPCL2, SUMO1P1, TENT4A) have no protein page.
 * Reference structures (secondary views): yeast CORVET 8QX8 and HOPS 7ZU0 (Supplementary Note 2, with TM-align
   RMSD tables), ERH·CIZ1 7X39 and RACK1 in the 40S 8GLP (Fig. 4E,F; downloaded from RCSB by `00_copy_raw.sh`,
   8GLP trimmed to RACK1 + 25 Å context).
