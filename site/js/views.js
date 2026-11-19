@@ -244,7 +244,7 @@
           <input type="search" id="net-q" placeholder="Gene symbol" style="width:100%">
           <h3>Edge evidence</h3>
           <div class="check-list" id="net-src">
-            ${[[1, "DUC-XL-MS · HEK293"], [2, "DUC-XL-MS · Jurkat"], [32, "DUC-XL-MS · cell line unresolved"], [4, "Augmented · BioPlex 3.0"], [8, "Augmented · OpenCell"], [16, "Augmented · EndoMAP"]]
+            ${[[1, "DUC-XL-MS · HEK293"], [2, "DUC-XL-MS · Jurkat"], [4, "Augmented · BioPlex 3.0"], [8, "Augmented · OpenCell"], [16, "Augmented · EndoMAP"]]
               .map(([b, l]) => `<label><input type="checkbox" value="${b}" checked> ${l}</label>`).join("")}
           </div>
           <h3>Minimum residue pairs</h3>
@@ -266,7 +266,7 @@
     });
     net.edges.forEach((e, k) => { if (!G.hasEdge(e[0], e[1])) G.addEdgeWithKey(k, e[0], e[1], { mask: e[2], rp: Math.max(e[3], e[4]), size: 0.4 }); });
 
-    const st = { src: 63, rp: 0, org: "", sel: null, neigh: new Set(), q: null };
+    const st = { src: 31, rp: 0, org: "", sel: null, neigh: new Set(), q: null };
     const edgeOk = (a) => (a.mask & st.src) && (!App.isOriginal(a.mask) || a.rp >= st.rp || !(a.mask & 3));
     const nodeOk = (n, a) => !st.org || (st.org === "__none" ? !a.loc.length : a.loc.includes(st.org));
     const renderer = new Sigma(G, $("#sigma"), {
@@ -746,7 +746,6 @@
           <ul style="padding-left:18px;margin:0;color:var(--ink-2)">
             <li>Organelle colours use Paul Tol's colour-blind-safe "muted" scheme; every colour is also named in a legend or label.</li>
             <li>Network edges: solid = cross-linked in DUC-XL-MS; grey/dashed = augmented from another resource.</li>
-            <li>620 DUC-XL-MS edges in Table S5 could not be traced to a cell line by gene symbol and are labelled “DUC-XL-MS”.</li>
           </ul></div>
         <div class="card"><h2>Code &amp; data</h2>
           <dl class="kv">
