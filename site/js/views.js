@@ -40,7 +40,6 @@
   }
   const GH = "https://github.com/zhangzh-orange/DUC-XL-MS";
   const gh = (path, label) => `<a class="code-link" href="${GH}/blob/main/${path}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
-  const codeLine = (...links) => `<p class="small muted" style="margin-top:6px">Code: ${links.join(" · ")}</p>`;
   const rcsb = (id) => `<a href="https://www.rcsb.org/structure/${id}" target="_blank" rel="noopener">PDB ${id} ↗</a>`;
 
   /* ── home ─────────────────────────────────────────────────────────────── */
@@ -365,7 +364,7 @@
         </div>
       </section>
       <section class="card"><h2>Localized proteins</h2><div id="org-tbl"></div></section>
-      ${codeLine(gh("src/figures/figure1.ipynb", "figure1.ipynb (markers, consistency)"), gh("src/figures/figure2.ipynb", "figure2.ipynb (propagation)"))}${footer()}`;
+      ${footer()}`;
     App.bindTips(el);
     const max = Math.max(...comps.map((c) => single[c] + dual[c]));
     $("#org-bars").innerHTML = comps.map((c) => `<div class="bar-row" data-tip="${esc(App.orgLabel(c))}: ${single[c]} single, ${dual[c]} dual">
@@ -401,7 +400,7 @@
         <div class="card"><h2>Proteins by category</h2><div class="card-sub">validated = all assigned domains agree with UniProt; prediction = sides not annotated in UniProt; correction = at least one side conflicts with UniProt</div><div id="topo-cat"></div></div>
       </section>
       <section class="card"><h2>Transmembrane proteins</h2><div id="topo-tbl"></div></section>
-      ${codeLine(gh("src/figures/figure2.ipynb", "figure2.ipynb (TM-loop topology vs. UniProt)"))}${footer()}`;
+      ${footer()}`;
     App.bindTips(el);
     viz.stack($("#topo-stack"), [
       { label: "Agree", value: tc.agree || 0, color: App.cssVar("--ok") },
@@ -498,7 +497,7 @@
           <div class="legend"><span><span class="dot" style="background:#BBBBBB;margin-right:5px"></span>ERH</span><span><span class="dot" style="background:#EE7733;margin-right:5px"></span>ERH residues 48–54</span><span><span class="dot" style="background:#4477AA;margin-right:5px"></span>CIZ1 peptide</span></div></div>
       </section>
       <section class="card"><h2>Candidate motifs</h2><div id="sl-tbl"></div></section>
-      ${codeLine(gh("src/figures/figure4.ipynb", "figure4.ipynb (ΔpLDDT / flank threshold sweeps, cognate-reader recovery)"))}${footer()}`;
+      ${footer()}`;
     App.bindTips(el);
     const R = App.meta.reference.slims, cleanups = [];
     unmount(() => cleanups.forEach((f) => f()));
@@ -569,7 +568,6 @@
             <p class="small muted" style="margin:6px 0 0">n<sub>ij</sub>: Cβ–Cβ interface contacts between chains i and j (≤ 8 Å); pLDDT from the original AlphaFold prediction; L: maximum Cα–Cα distance of the cross-linker (40 Å here).</p>
           </div>
         </div>
-        ${codeLine(gh("src/README.md", "tutorial & input formats"), gh("src/XL_MOPLC/XL_MOPLC_pipeline.ipynb", "XL_MOPLC_pipeline.ipynb"), gh("src/XL_MOPLC/complex_assembly_main.py", "complex_assembly_main.py (CLI)"), `<a class="code-link" href="https://github.com/KosinskiLab/af3x" target="_blank" rel="noopener">AF3x ↗</a>`)}
       </section>${footer()}`;
   };
 
@@ -714,7 +712,7 @@
         <div class="card"><h2>HEK293 + Jurkat core interactome</h2><div class="card-sub">${fmt(m.counts.coreInteractome)} PPIs · sources of each edge</div><div id="sy-all"></div></div>
       </section>
       <section class="card"><h2>Augmented edges</h2><div class="card-sub">Each edge lists the shared DUC-XL-MS neighbours that justify it.</div><div id="sy-tbl"></div></section>
-      ${codeLine(gh("src/figures/figure7.ipynb", "figure7.ipynb (triadic closure, PDB validation, HEK–Jurkat)"), gh("src/figures/figure7_venn.R", "figure7_venn.R"))}${footer()}`;
+      ${footer()}`;
     App.bindTips(el);
     viz.stack($("#sy-hek"), segs(m.augSourcesHEK, "DUC-XL-MS_original"));
     viz.stack($("#sy-all"), segs(m.augSourcesAll, "HEK293+Jurkat_original"));
