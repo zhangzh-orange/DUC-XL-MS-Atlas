@@ -43,7 +43,9 @@ cd site && python3 -m http.server 8000   # then open http://localhost:8000
 
 ## Deploy
 
-* **GitHub Pages**: push the contents of `site/` (the repo-level `.gitignore` excludes the source `data/`).
+* **GitHub Pages** (https://zhangzh-orange.github.io/DUC-XL-MS-Atlas/): `.github/workflows/pages.yml`
+  publishes `site/` on every push to `main`. One-time setup: repository Settings → Pages →
+  Source: **GitHub Actions**. The repo-level `.gitignore` keeps the source `data/` out of git.
 * **Institutional server**: copy `site/` to the web root.
 
 The site has no access control: anyone with the URL can view and download the data in `site/data/`.
