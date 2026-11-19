@@ -7,8 +7,8 @@ centre, ER beside it, Golgi/endosomes towards the periphery); unannotated
 proteins settle next to their cross-link partners.
 
 Small disconnected components (pairs, triplets, ...) are laid out one by one
-at the same edge length and packed in rows below the main component, as
-Cytoscape does, so their interactions stay visible.
+at the same edge length as the main component and arranged on concentric
+rings around it, each turned along the ring, so their interactions stay visible.
 Writes data/processed/network_layout.json: [[x, y], ...] in node order.
 """
 import json
@@ -82,35 +82,48 @@ def main():
     pos = layout_main(g, main_nodes, loc_of, net["acc"])
     d = float(np.median([np.linalg.norm(pos[a] - pos[b]) for a, b in g.subgraph(main_nodes).edges()]))
 
-    # pack the remaining components in rows under the main component, spanning its width
+    # arrange the remaining components on concentric rings around the main component
     main_xy = np.array(list(pos.values()))
-    x_min, x_max = main_xy[:, 0].min(), main_xy[:, 0].max()
-    y_top = main_xy[:, 1].min() - GAP * 2 * d
+    centre = main_xy.mean(axis=0)
     gap = GAP * d
-    rows, row, x = [], [], 0.0
+    items = []
     for c in comps[1:]:
         sub = layout_small(g, c, d)
-        pts = np.array(list(sub.values()))
-        w = np.ptp(pts[:, 0])
-        if row and x + w > x_max - x_min:  # wrap to the next row
-            rows.append((row, x - gap)); row, x = [], 0.0
-        row.append((sub, pts, x)); x += w + gap
-    if row:
-        rows.append((row, x - gap))
-    for row, width in rows:
-        shift = x_min + (x_max - x_min - width) / 2  # centre each row
-        row_h = max(np.ptp(pts[:, 1]) for _, pts, _ in row)
-        for sub, pts, x0 in row:
-            off = np.array([shift + x0 - pts[:, 0].min(), y_top - row_h / 2 - pts[:, 1].mean()])
-            for i, p in sub.items():
-                pos[i] = p + off
-        y_top -= row_h + gap
+        ids, pts = list(sub), np.array(list(sub.values()))
+        if len(pts) > 2:  # turn the long axis onto x so the component lies along the ring
+            _, _, vt = np.linalg.svd(pts - pts.mean(axis=0))
+            pts = (pts - pts.mean(axis=0)) @ vt.T
+        items.append((ids, pts, np.ptp(pts[:, 0]), np.ptp(pts[:, 1])))
+    radius = np.percentile(np.linalg.norm(main_xy - centre, axis=1), 99.5) + 2 * gap
+    rings, ring, used = [], [], 0.0
+    for it in items:
+        need = it[2] + gap
+        if ring and used + need > 2 * np.pi * radius:
+            rings.append((radius, ring))
+            radius += max(x[3] for x in ring) + 2 * gap
+            ring, used = [], 0.0
+        ring.append(it)
+        used += need
+    if ring:
+        rings.append((radius, ring))
+    for radius, ring in rings:
+        spare = (2 * np.pi * radius - sum(x[2] + gap for x in ring)) / len(ring)
+        theta = -np.pi / 2
+        for ids, pts, w, _ in ring:
+            arc = w + gap + spare
+            t = theta + arc / (2 * radius)
+            rot = np.array([[np.cos(t + np.pi / 2), -np.sin(t + np.pi / 2)],
+                            [np.sin(t + np.pi / 2), np.cos(t + np.pi / 2)]])
+            at = centre + radius * np.array([np.cos(t), np.sin(t)])
+            for i, p in zip(ids, pts - pts.mean(axis=0)):
+                pos[i] = at + rot @ p
+            theta += arc / radius
 
     xy = np.array([pos[i] for i in range(n)])
     json.dump([[round(float(x), 4), round(float(y), 4)] for x, y in xy],
               open(OUT / "network_layout.json", "w"), separators=(",", ":"))
     print(f"layout written for {n} nodes: main component {len(main_nodes)}, "
-          f"{len(comps) - 1} small components packed, edge length {d:.4f}")
+          f"{len(comps) - 1} small components on {len(rings)} ring(s), edge length {d:.4f}")
 
 
 if __name__ == "__main__":
