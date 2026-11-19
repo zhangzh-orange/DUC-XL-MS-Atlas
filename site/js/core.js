@@ -135,7 +135,20 @@ App.network = async () => {
   E.edges.forEach((e, k) => { adj[e[0]].push(k); adj[e[1]].push(k); });
   const nodeOfAcc = new Map();
   E.acc.forEach((a, i) => { if (a && !nodeOfAcc.has(a)) nodeOfAcc.set(a, i); });
-  App._net = { ...E, xy: L, adj, nodeOfAcc };
+  // flag the largest connected component (small components are packed below it in the layout)
+  const comp = new Int32Array(E.nodes.length).fill(-1), sizes = [];
+  for (let s = 0; s < comp.length; s++) {
+    if (comp[s] >= 0) continue;
+    const id = sizes.length, stack = [s]; comp[s] = id; let n = 0;
+    while (stack.length) {
+      const v = stack.pop(); n++;
+      for (const k of adj[v]) { const e = E.edges[k], o = e[0] === v ? e[1] : e[0]; if (comp[o] < 0) { comp[o] = id; stack.push(o); } }
+    }
+    sizes.push(n);
+  }
+  const mainId = sizes.indexOf(Math.max(...sizes));
+  const inMain = Array.from(comp, (c) => c === mainId);
+  App._net = { ...E, xy: L, adj, nodeOfAcc, inMain };
   return App._net;
 };
 App.nodeLoc = (net, i) => { const a = net.acc[i]; const p = a != null ? App.idx.byAcc.get(a) : null; return p == null ? null : App.P.loc[p]; };

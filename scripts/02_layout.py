@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """Organelle-anchored force layout of the core interactome.
 
-Each annotated protein is tied to a fixed anchor node per compartment, so the
-map reads like a cell (nucleus centre, ER beside it, Golgi/endosomes towards
-the periphery); unannotated proteins settle next to their cross-link partners.
+The largest connected component is laid out with each annotated protein tied
+to a fixed anchor node per compartment, so the map reads like a cell (nucleus
+centre, ER beside it, Golgi/endosomes towards the periphery); unannotated
+proteins settle next to their cross-link partners.
+
+Small disconnected components (pairs, triplets, ...) are laid out one by one
+at the same edge length and packed in rows below the main component, as
+Cytoscape does, so their interactions stay visible.
 Writes data/processed/network_layout.json: [[x, y], ...] in node order.
 """
 import json
@@ -26,46 +31,86 @@ ANCHORS = {
     "peroxisome": (-0.85, -0.35),
 }
 ANCHOR_WEIGHT = 3.0
+GAP = 1.2  # spacing between packed components, in units of the main edge length
+
+
+def layout_main(g, nodes, loc_of, acc_of):
+    """Spring layout of the main component pulled towards organelle anchors."""
+    h = g.subgraph(nodes).copy()
+    rng = np.random.default_rng(7)
+    pos = {}
+    for name, xy in ANCHORS.items():
+        h.add_node(f"@{name}")
+        pos[f"@{name}"] = np.array(xy)
+    for i in nodes:
+        loc = loc_of.get(acc_of[i]) if acc_of[i] else None
+        comps = [c for c in (loc or "").split(";") if c in ANCHORS]
+        for c in comps:
+            h.add_edge(i, f"@{c}", weight=ANCHOR_WEIGHT / len(comps))
+        centre = np.mean([ANCHORS[c] for c in comps], axis=0) if comps else np.zeros(2)
+        pos[i] = centre + rng.normal(0, 0.25, 2)
+    lay = nx.spring_layout(h, pos=pos, fixed=[f"@{c}" for c in ANCHORS],
+                           k=0.02, iterations=80, weight="weight", seed=7)
+    return {i: np.asarray(lay[i]) for i in nodes}
+
+
+def layout_small(g, nodes, d):
+    """Layout of one small component with median edge length d, centred at 0."""
+    nodes = sorted(nodes)
+    if len(nodes) == 2:
+        return {nodes[0]: np.array([-d / 2, 0.0]), nodes[1]: np.array([d / 2, 0.0])}
+    h = g.subgraph(nodes)
+    lay = nx.kamada_kawai_layout(h) if len(nodes) <= 30 else nx.spring_layout(h, seed=7)
+    xy = np.array([lay[i] for i in nodes])
+    lengths = [np.linalg.norm(lay[a] - lay[b]) for a, b in h.edges()]
+    xy = (xy - xy.mean(axis=0)) * (d / np.median(lengths))
+    return dict(zip(nodes, xy))
 
 
 def main():
     net = json.load(open(OUT / "network_edges.json"))
     prot = json.load(open(OUT / "proteins.json"))
     loc_of = dict(zip(prot["acc"], prot["loc"]))
+    n = len(net["nodes"])
 
     g = nx.Graph()
-    n = len(net["nodes"])
     g.add_nodes_from(range(n))
-    for e in net["edges"]:
-        g.add_edge(e[0], e[1], weight=1.0)
+    g.add_edges_from((e[0], e[1]) for e in net["edges"])
+    comps = sorted(nx.connected_components(g), key=lambda c: (-len(c), min(c)))
 
-    rng = np.random.default_rng(7)
-    pos = {}
-    for name, xy in ANCHORS.items():
-        a = f"@{name}"
-        g.add_node(a)
-        pos[a] = np.array(xy)
-    for i, acc in enumerate(net["acc"]):
-        loc = loc_of.get(acc) if acc else None
-        comps = [c for c in (loc or "").split(";") if c in ANCHORS]
-        for c in comps:
-            g.add_edge(i, f"@{c}", weight=ANCHOR_WEIGHT / len(comps))
-        centre = np.mean([ANCHORS[c] for c in comps], axis=0) if comps else np.zeros(2)
-        pos[i] = centre + rng.normal(0, 0.25, 2)
+    main_nodes = comps[0]
+    pos = layout_main(g, main_nodes, loc_of, net["acc"])
+    d = float(np.median([np.linalg.norm(pos[a] - pos[b]) for a, b in g.subgraph(main_nodes).edges()]))
 
-    lay = nx.spring_layout(g, pos=pos, fixed=[f"@{c}" for c in ANCHORS],
-                           k=0.02, iterations=80, weight="weight", seed=7)
-    xy = np.array([lay[i] for i in range(n)])
-    # pull small disconnected components (pushed far out by repulsion) onto a ring
-    # just outside the main cloud, so they do not shrink the visible map
-    main = max(nx.connected_components(g.subgraph(range(n))), key=len)
-    r = np.linalg.norm(xy, axis=1)
-    lim = np.percentile(r[list(main)], 99) * 1.08
-    out = r > lim
-    xy[out] *= (lim / r[out])[:, None]
+    # pack the remaining components in rows under the main component, spanning its width
+    main_xy = np.array(list(pos.values()))
+    x_min, x_max = main_xy[:, 0].min(), main_xy[:, 0].max()
+    y_top = main_xy[:, 1].min() - GAP * 2 * d
+    gap = GAP * d
+    rows, row, x = [], [], 0.0
+    for c in comps[1:]:
+        sub = layout_small(g, c, d)
+        pts = np.array(list(sub.values()))
+        w = np.ptp(pts[:, 0])
+        if row and x + w > x_max - x_min:  # wrap to the next row
+            rows.append((row, x - gap)); row, x = [], 0.0
+        row.append((sub, pts, x)); x += w + gap
+    if row:
+        rows.append((row, x - gap))
+    for row, width in rows:
+        shift = x_min + (x_max - x_min - width) / 2  # centre each row
+        row_h = max(np.ptp(pts[:, 1]) for _, pts, _ in row)
+        for sub, pts, x0 in row:
+            off = np.array([shift + x0 - pts[:, 0].min(), y_top - row_h / 2 - pts[:, 1].mean()])
+            for i, p in sub.items():
+                pos[i] = p + off
+        y_top -= row_h + gap
+
+    xy = np.array([pos[i] for i in range(n)])
     json.dump([[round(float(x), 4), round(float(y), 4)] for x, y in xy],
               open(OUT / "network_layout.json", "w"), separators=(",", ":"))
-    print("layout written for", n, "nodes")
+    print(f"layout written for {n} nodes: main component {len(main_nodes)}, "
+          f"{len(comps) - 1} small components packed, edge length {d:.4f}")
 
 
 if __name__ == "__main__":

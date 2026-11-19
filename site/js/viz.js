@@ -21,7 +21,9 @@
       col2[i] = loc[i][1] ? App.orgColor(loc[i][1]) : null;
     }
     let W = 0, H = 0, scale = 1, ox = 0, oy = 0, hover = -1;
-    const xs = net.xy.map((p) => p[0]), ys = net.xy.map((p) => p[1]);
+    // the cell map shows the main component only; small packed components belong to the network view
+    const shown = net.nodes.map((_, i) => net.inMain[i]);
+    const xs = net.xy.filter((_, i) => shown[i]).map((p) => p[0]), ys = net.xy.filter((_, i) => shown[i]).map((p) => p[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
     const px = (i) => ox + (net.xy[i][0] - minX) * scale;
     const py = (i) => oy + (maxY - net.xy[i][1]) * scale;
@@ -40,7 +42,7 @@
       if (opts.edges !== false) {
         ctx.strokeStyle = App.cssVar("--edge"); ctx.lineWidth = 0.5; ctx.beginPath();
         for (const e of net.edges) {
-          if (focus && !(focus.has(e[0]) || focus.has(e[1]))) continue;
+          if (!shown[e[0]] || (focus && !(focus.has(e[0]) || focus.has(e[1])))) continue;
           ctx.moveTo(px(e[0]), py(e[0])); ctx.lineTo(px(e[1]), py(e[1]));
         }
         ctx.stroke();
@@ -48,6 +50,7 @@
       const r = Math.max(1.6, Math.min(3.2, scale / 160));
       for (let pass = 0; pass < 2; pass++) {
         for (let i = 0; i < n; i++) {
+          if (!shown[i]) continue;
           const has = !!col[i];
           if ((pass === 0) === has) continue;  // unassigned first, organelles on top
           const dim = focus && !focus.has(i);
@@ -82,7 +85,7 @@
     function nearest(ev) {
       const b = cv.getBoundingClientRect(), x = ev.clientX - b.left, y = ev.clientY - b.top;
       let best = -1, bd = 64;
-      for (let i = 0; i < n; i++) { const d = (px(i) - x) ** 2 + (py(i) - y) ** 2; if (d < bd) { bd = d; best = i; } }
+      for (let i = 0; i < n; i++) { if (!shown[i]) continue; const d = (px(i) - x) ** 2 + (py(i) - y) ** 2; if (d < bd) { bd = d; best = i; } }
       return best;
     }
     cv.addEventListener("mousemove", (ev) => {
