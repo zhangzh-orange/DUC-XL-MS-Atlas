@@ -262,7 +262,7 @@
     const aug = App.cssVar("--aug") || "#a0a3aa";
     net.nodes.forEach((g, i) => {
       const loc = App.locList(App.nodeLoc(net, i));
-      G.addNode(i, { x: net.xy[i][0], y: net.xy[i][1], label: g, size: 1.5 + Math.min(6, Math.log2(net.adj[i].length + 1) * 0.7), color: loc[0] ? App.meta.organelleColors[loc[0]] : aug, loc });
+      G.addNode(i, { x: net.xy[i][0], y: net.xy[i][1], label: g, size: 1 + Math.min(5, Math.log2(net.adj[i].length + 1) * 0.55), color: loc[0] ? App.meta.organelleColors[loc[0]] : aug, loc });
     });
     net.edges.forEach((e, k) => { if (!G.hasEdge(e[0], e[1])) G.addEdgeWithKey(k, e[0], e[1], { mask: e[2], rp: Math.max(e[3], e[4]), size: 0.4 }); });
 
@@ -277,7 +277,8 @@
         if (st.sel != null) {
           if (+n === st.sel) { r.highlighted = true; r.zIndex = 2; r.size = a.size + 3; }
           else if (st.neigh.has(+n)) { r.zIndex = 1; r.forceLabel = st.neigh.size < 60; }
-          else { r.color = App.cssVar("--grid"); r.label = ""; }
+          // background nodes shrink to dots so they do not cover the highlighted edges
+          else { r.color = App.cssVar("--grid"); r.label = ""; r.size = Math.min(a.size, 1.2); r.zIndex = 0; }
         }
         return r;
       },
