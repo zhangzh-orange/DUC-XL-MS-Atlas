@@ -192,7 +192,7 @@
       </section>
       <section class="card" style="margin-bottom:16px">
         <h2>Interactors</h2>
-        <div class="card-sub">Residue pairs counted from Table S1; sources from the augmented core interactome (Table S5).</div>
+        <div class="card-sub">HEK293 / Jurkat: directly cross-linked in DUC-XL-MS (residue pairs from Table S1). "… augmented": not a cited interaction — reported by that database and added by our triadic-closure rule because both proteins share at least one DUC-XL-MS neighbour (listed in the last column; Table S5).</div>
         <div id="int-tbl"></div>
       </section>
       ${det?.slims?.length ? `<section class="card" style="margin-bottom:16px"><h2>Candidate short linear motifs</h2><div class="card-sub">AlphaFold3 SLiM screen of cross-link-supported PPIs (Table S4)</div><div id="slim-tbl"></div></section>` : ""}
@@ -218,7 +218,7 @@
     App.table($("#int-tbl"), rows, [
       { key: "gene", label: "Partner", render: (r) => App.protLink(r.acc, r.gene) },
       { key: "loc", label: "Compartment", value: (r) => r.loc.map(App.orgLabel).join("; "), render: (r) => r.loc.map((c) => `<span class="dot" style="background:${App.orgColor(c)}"></span> ${esc(App.orgLabel(c))}`).join(" ") || `<span class="muted">–</span>` },
-      { key: "mask", label: "Sources", value: (r) => App.SRC_NAMES.filter((_, i) => r.mask & (1 << i)).join("; "), render: (r) => App.srcBadges(r.mask) },
+      { key: "mask", label: "Sources", value: (r) => App.srcText(r.mask), render: (r) => App.srcBadges(r.mask) },
       { key: "rpH", label: "Residue pairs HEK293", num: true },
       { key: "rpJ", label: "Residue pairs Jurkat", num: true },
       { key: "common", label: "Shared neighbours (augmented)", render: (r) => esc(r.common || "") },
@@ -719,7 +719,7 @@
     App.table($("#sy-tbl"), augRows, [
       { key: "a", label: "Protein A", render: (r) => App.protLink(r.accA, r.a) },
       { key: "b", label: "Protein B", render: (r) => App.protLink(r.accB, r.b) },
-      { key: "mask", label: "Reported by", value: (r) => App.SRC_NAMES.filter((_, i) => r.mask & (1 << i)).join("; "), render: (r) => App.srcBadges(r.mask) },
+      { key: "mask", label: "Augmented from", value: (r) => App.srcText(r.mask), render: (r) => App.srcBadges(r.mask) },
       { key: "common", label: "Shared DUC-XL-MS neighbours", wrap: true },
       { key: "hek", label: "In HEK293-only augmentation", value: (r) => (r.hek ? "yes" : "no") },
     ], { name: "augmented_edges", placeholder: "Filter by gene or resource…" });

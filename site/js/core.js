@@ -42,8 +42,18 @@ App.protLink = (acc, label) => acc && App.idx.byAcc.has(acc)
   ? `<a href="#/protein/${esc(acc)}">${esc(label ?? App.geneOf(acc))}</a>` : esc(label ?? acc);
 
 App.SRC_NAMES = ["HEK293", "Jurkat", "BioPlex", "OpenCell", "EndoMap"];
-App.srcBadges = (mask) => App.SRC_NAMES.filter((_, i) => mask & (1 << i))
-  .map((s) => `<span class="badge b-${s}">${s === "EndoMap" ? "EndoMAP" : s}</span>`).join("");
+// Reference-database edges are not cited interactions: they were added by our triadic-closure rule
+App.SRC_LABELS = { HEK293: "HEK293", Jurkat: "Jurkat", BioPlex: "BioPlex augmented", OpenCell: "OpenCell augmented", EndoMap: "EndoMAP augmented" };
+const SRC_TIPS = {
+  HEK293: "Directly cross-linked in DUC-XL-MS (HEK293)", Jurkat: "Directly cross-linked in DUC-XL-MS (Jurkat)",
+  BioPlex: "Added by triadic closure: reported in BioPlex 3.0 and both proteins share ≥ 1 DUC-XL-MS neighbour",
+  OpenCell: "Added by triadic closure: reported in OpenCell and both proteins share ≥ 1 DUC-XL-MS neighbour",
+  EndoMap: "Added by triadic closure: reported in EndoMAP and both proteins share ≥ 1 DUC-XL-MS neighbour",
+};
+App.srcNames = (mask) => App.SRC_NAMES.filter((_, i) => mask & (1 << i));
+App.srcText = (mask) => App.srcNames(mask).map((s) => App.SRC_LABELS[s]).join("; ");
+App.srcBadges = (mask) => App.srcNames(mask)
+  .map((s) => `<span class="badge b-${s}" title="${esc(SRC_TIPS[s])}">${App.SRC_LABELS[s]}</span>`).join("");
 App.isOriginal = (mask) => (mask & (1 | 2)) !== 0;
 
 /* tooltip */
