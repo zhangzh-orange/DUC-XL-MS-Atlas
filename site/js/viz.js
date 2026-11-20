@@ -313,8 +313,8 @@
     const color = (r) => r.kind === "xl" ? (V.AGREE_COLORS[r.xl.Agreement] || "var(--muted)") : "var(--muted)";
     let s = `<rect x="0" y="${mY}" width="${W}" height="${mH}" fill="var(--surface-2)"/>
       <line x1="0" x2="${W}" y1="${mY}" y2="${mY}" stroke="var(--border)"/><line x1="0" x2="${W}" y1="${mY + mH}" y2="${mY + mH}" stroke="var(--border)"/>
-      <text x="4" y="14" font-size="11" font-weight="600">${esc(V.SIDE_NAMES[topCode])} side</text>
-      <text x="4" y="${botY + 72}" font-size="11" font-weight="600">${esc(V.SIDE_NAMES[bottomCode])} side</text>
+      <text x="4" y="14" font-size="10" font-style="italic" style="fill:var(--muted)">↑ ${esc(V.SIDE_NAMES[topCode].toLowerCase())} side</text>
+      <text x="4" y="${botY + 72}" font-size="10" font-style="italic" style="fill:var(--muted)">↓ ${esc(V.SIDE_NAMES[bottomCode].toLowerCase())} side</text>
       <text x="4" y="${mY + mH / 2 + 4}" font-size="10">membrane</text>`;
     // chain regions
     regs.forEach((r, i) => {
