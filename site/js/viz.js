@@ -279,6 +279,14 @@
     if (rN.side) s += badge(rN.x1 + 10, yOf(isTop(rN.side)), "C") + `<text x="${rN.x1 + 10}" y="${yOf(isTop(rN.side)) + (isTop(rN.side) ? -14 : 22)}" font-size="9.5" text-anchor="middle">${L}</text>`;
     // UniProt annotation track (same x scale)
     s += `<text x="4" y="${upY - 8}" font-size="10.5" font-weight="600">UniProt annotation</text>`;
+    // key for the track colours (side names depend on the protein, so drawn here rather than in the HTML legend)
+    let kx = 140;
+    [[V.SIDE_COLORS.top, `${V.SIDE_NAMES[topCode]} (TOPO_DOM)`], [V.SIDE_COLORS.bottom, `${V.SIDE_NAMES[bottomCode]} (TOPO_DOM)`],
+     ["var(--surface-2)", "not annotated"], ["var(--ink-2)", "TRANSMEM"]].forEach(([c, t]) => {
+      s += `<rect x="${kx}" y="${upY - 17}" width="14" height="10" rx="2" fill="${c}" stroke="var(--border)" stroke-width="0.5"/>
+        <text x="${kx + 19}" y="${upY - 8}" font-size="10">${esc(t)}</text>`;
+      kx += 19 + t.length * 5.6 + 16;
+    });
     regs.forEach((r) => {
       const fill = r.upSide ? (isTop(r.upSide) ? V.SIDE_COLORS.top : V.SIDE_COLORS.bottom) : "var(--surface-2)";
       s += `<rect x="${r.x0}" y="${upY}" width="${Math.max(1, r.x1 - r.x0)}" height="12" fill="${fill}" stroke="var(--surface)" stroke-width="1" data-tip="${esc(`${V.regionName(r.id)} ${r.a}–${r.b}<br>UniProt TOPO_DOM: ${r.upNote || "not annotated"}`)}"/>`;
