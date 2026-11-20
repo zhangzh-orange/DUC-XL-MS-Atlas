@@ -752,7 +752,6 @@
           <dl class="kv">
             <dt>GitHub</dt><dd><a href="${GH}" target="_blank" rel="noopener">zhangzh-orange/DUC-XL-MS ↗</a> — figure-reproduction notebooks, the XL_MOPLC assembly pipeline and analysis modules (organelle-label propagation, membrane-topology assignment, ipSAE SLiM screen, triadic-closure augmentation). MIT licence.</dd>
             <dt>PRIDE</dt><dd>HEK293 <span class="mono">PXD081158</span> · Jurkat <span class="mono">PXD081113</span> (ProteomeXchange)</dd>
-            <dt>Figures</dt><dd>${gh("src/figures", "src/figures/")} — Fig. 1, 2, 4, 7 notebooks; Fig. 3 and 6 imaging superplots in R</dd>
             <dt>Code questions</dt><dd><a href="${GH}/issues" target="_blank" rel="noopener">GitHub issues ↗</a></dd>
           </dl>
           <h3 style="margin-top:12px">Citation</h3>
