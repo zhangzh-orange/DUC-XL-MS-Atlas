@@ -200,7 +200,7 @@
           <span><span class="sw" style="background:repeating-linear-gradient(90deg,var(--muted) 0 6px,transparent 6px 10px)"></span>UniProt side only (no cross-link evidence)</span>
           <span><span class="sw" style="background:repeating-linear-gradient(90deg,var(--muted) 0 2px,transparent 2px 6px)"></span>side inferred by alternation</span>
           <span><span class="dot" style="background:var(--ink-2);border-radius:2px;width:8px;height:14px"></span> TM helix (UniProt)</span>
-          <span><b>N</b> / <b>C</b>: protein termini (residue 1 / last residue)</span>
+          <span><b>N</b> / <b>C</b>: protein termini</span>
         </div>
         <div id="topo-track" class="topo-track"></div>
         ${det.tm?.["Inconsistent Flag"] ? `<p class="small tag-conflict" style="margin:8px 0 0">⚠ The assigned domain sides are not mutually consistent with the UniProt TM helices (dashed red helix: both flanking domains on the same side).</p>` : ""}
