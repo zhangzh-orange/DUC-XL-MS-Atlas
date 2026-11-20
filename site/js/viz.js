@@ -118,46 +118,127 @@
   const niceStep = (x) => { const p = 10 ** Math.floor(Math.log10(x)); const m = x / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
 
   /* ── sequence track: cross-links, loops and motifs along the sequence ── */
+  // Mouse wheel zooms around the cursor, drag pans, double-click resets; the view
+  // (host._view = [first, last] residue) survives redraws such as the cell-line toggle.
   V.seqTrack = function (host, acc, det, len, cells = 3) {
     const xl = (det?.xl || []).filter((x) => x[3] & cells);
-    const L = len || Math.max(10, ...xl.map((x) => x[1]), ...(det?.loops || []).map((l) => +String(l["Loop Range"]).split("-")[0] || 0));
+    const seq = det?.seq || "";
+    const L = len || seq.length || Math.max(10, ...xl.map((x) => x[1]), ...(det?.loops || []).map((l) => +String(l["Loop Range"]).split("-")[0] || 0));
     const W = 1000, padL = 36, padR = 16, innerW = W - padL - padR;
-    const X = (r) => padL + (Math.min(r, L) / L) * innerW;
     const intra = xl.filter((x) => x[0] === acc), inter = xl.filter((x) => x[0] !== acc);
     const arcH = 110, barY = arcH + 22, H = barY + 92;
-    let s = "";
-    // intra arcs
+    const minSpan = Math.min(L, 40), seqSpan = innerW / 8.5; // letters appear below ~8.5 px per residue
     const maxSpan = Math.max(1, ...intra.map((x) => Math.abs(x[2] - x[1])));
-    for (const x of intra.slice(0, 2500)) {
-      const a = X(Math.min(x[1], x[2])), b = X(Math.max(x[1], x[2]));
-      const h = 8 + (arcH - 12) * Math.sqrt(Math.abs(x[2] - x[1]) / maxSpan);
-      s += `<path d="M${a},${barY - 6} C${a},${barY - 6 - h} ${b},${barY - 6 - h} ${b},${barY - 6}" fill="none" stroke="${V.CELL_COLORS[x[3]]}" stroke-width="1" stroke-opacity=".55" data-tip="Intra-link K${x[1]}–K${x[2]}<br>${V.CELL_LABELS[x[3]]}"/>`;
-    }
-    // loops (membrane topology) and motifs as background bands
-    for (const l of det?.loops || []) {
-      const [a, b] = String(l["Loop Range"]).split("-");
-      const ra = +a || 1, rb = b === "Ct" ? L : +b || L;
-      s += `<rect x="${X(ra)}" y="${barY - 4}" width="${Math.max(2, X(rb) - X(ra))}" height="8" rx="2" fill="${l["Assigned Side"] === "CYT" ? "#88CCEE" : "#DDAA33"}" opacity=".9" data-tip="${esc(V.regionName(l["Loop ID"]))} · residues ${ra}–${rb}<br>DUC-XL-MS: <b>${esc(V.SIDE_NAMES[l["Assigned Side"]] || l["Assigned Side"])}</b> · UniProt: ${esc(V.SIDE_NAMES[l["UniProt Side"]] || "not annotated")}<br>${esc(l.Agreement)}"/>`;
-    }
-    s += `<rect x="${padL}" y="${barY - 2}" width="${innerW}" height="4" rx="2" fill="var(--border)"/>`;
-    for (const m of det?.slims || []) {
-      const a = X(m["Start Residue"]), b = X(m["End Residue"]);
-      s += `<rect x="${a}" y="${barY + 8}" width="${Math.max(3, b - a)}" height="9" rx="2" fill="#EE7733" data-tip="SLiM ${m["Start Residue"]}–${m["End Residue"]} → ${esc(m["Partner Gene Symbol"])}<br><span class='mono'>${esc(m["Motif Sequence"])}</span><br>ΔpLDDT ${m.dpLDDT} · ipSAE ${m["Max ipSAE"]}"/>`;
-    }
-    // inter-link ticks aggregated by residue
     const byRes = new Map();
     for (const x of inter) { if (!byRes.has(x[1])) byRes.set(x[1], []); byRes.get(x[1]).push(x); }
     const maxN = Math.max(1, ...[...byRes.values()].map((v) => v.length));
-    for (const [r, v] of byRes) {
-      const m = v.reduce((o, x) => o | x[3], 0);
-      const h = 8 + 44 * Math.sqrt(v.length / maxN);
-      const partners = [...new Set(v.map((x) => App.geneOf(x[0])))];
-      s += `<line x1="${X(r)}" x2="${X(r)}" y1="${barY + 20}" y2="${barY + 20 + h}" stroke="${V.CELL_COLORS[m]}" stroke-width="2" stroke-linecap="round" data-tip="K${r}: ${v.length} inter-link(s)<br>${esc(partners.slice(0, 12).join(", "))}${partners.length > 12 ? "…" : ""}"/>`;
+    const linked = new Set(xl.flatMap((x) => (x[0] === acc ? [x[1], x[2]] : [x[1]])));
+    if (!host._view || host._view.L !== L) host._view = { a: 0.5, b: L + 0.5, L };
+
+    const draw = () => {
+      const { a: v0, b: v1 } = host._view, span = v1 - v0;
+      const X = (r) => padL + ((r - v0) / span) * innerW;
+      const inView = (r) => r >= v0 - 1 && r <= v1 + 1;
+      let s = `<defs><clipPath id="trk-clip"><rect x="${padL - 2}" y="0" width="${innerW + 4}" height="${H}"/></clipPath></defs><g clip-path="url(#trk-clip)">`;
+      // intra arcs
+      for (const x of intra.slice(0, 2500)) {
+        const lo = Math.min(x[1], x[2]), hi = Math.max(x[1], x[2]);
+        if (hi < v0 - 1 || lo > v1 + 1) continue;
+        const a = X(lo), b = X(hi);
+        const h = 8 + (arcH - 12) * Math.sqrt((hi - lo) / maxSpan);
+        s += `<path d="M${a},${barY - 6} C${a},${barY - 6 - h} ${b},${barY - 6 - h} ${b},${barY - 6}" fill="none" stroke="${V.CELL_COLORS[x[3]]}" stroke-width="1" stroke-opacity=".55" data-tip="Intra-link K${x[1]}–K${x[2]}<br>${V.CELL_LABELS[x[3]]}"/>`;
+      }
+      // loops (membrane topology) and motifs as background bands
+      for (const l of det?.loops || []) {
+        const [a, b] = String(l["Loop Range"]).split("-");
+        const ra = +a || 1, rb = b === "Ct" ? L : +b || L;
+        s += `<rect x="${X(ra - 0.5)}" y="${barY - 4}" width="${Math.max(2, X(rb + 0.5) - X(ra - 0.5))}" height="8" rx="2" fill="${l["Assigned Side"] === "CYT" ? "#88CCEE" : "#DDAA33"}" opacity=".9" data-tip="${esc(V.regionName(l["Loop ID"]))} · residues ${ra}–${rb}<br>DUC-XL-MS: <b>${esc(V.SIDE_NAMES[l["Assigned Side"]] || l["Assigned Side"])}</b> · UniProt: ${esc(V.SIDE_NAMES[l["UniProt Side"]] || "not annotated")}<br>${esc(l.Agreement)}"/>`;
+      }
+      s += `<rect x="${X(0.5)}" y="${barY - 2}" width="${X(L + 0.5) - X(0.5)}" height="4" rx="2" fill="var(--border)"/>`;
+      for (const m of det?.slims || []) {
+        const a = X(m["Start Residue"] - 0.5), b = X(m["End Residue"] + 0.5);
+        s += `<rect x="${a}" y="${barY + 6}" width="${Math.max(3, b - a)}" height="11" rx="2" fill="#EE7733" fill-opacity="${span <= seqSpan ? 0.45 : 1}" data-tip="SLiM ${m["Start Residue"]}–${m["End Residue"]} → ${esc(m["Partner Gene Symbol"])}<br><span class='mono'>${esc(m["Motif Sequence"])}</span><br>ΔpLDDT ${m.dpLDDT} · ipSAE ${m["Max ipSAE"]}"/>`;
+      }
+      // sequence letters at high zoom; cross-linked lysines in bold
+      if (seq && span <= seqSpan) {
+        for (let r = Math.max(1, Math.ceil(v0)); r <= Math.min(L, Math.floor(v1)); r++) {
+          const k = linked.has(r);
+          s += `<text x="${X(r)}" y="${barY + 15}" font-size="10" text-anchor="middle" class="mono" style="fill:${k ? "var(--ink)" : "var(--ink-2)"}${k ? ";font-weight:700" : ""}" data-tip="${esc(seq[r - 1])}${r}${k ? " · cross-linked" : ""}">${esc(seq[r - 1] || "")}</text>`;
+        }
+      }
+      // inter-link ticks aggregated by residue
+      for (const [r, v] of byRes) {
+        if (!inView(r)) continue;
+        const m = v.reduce((o, x) => o | x[3], 0);
+        const h = 8 + 44 * Math.sqrt(v.length / maxN);
+        const partners = [...new Set(v.map((x) => App.geneOf(x[0])))];
+        s += `<line x1="${X(r)}" x2="${X(r)}" y1="${barY + 20}" y2="${barY + 20 + h}" stroke="${V.CELL_COLORS[m]}" stroke-width="2" stroke-linecap="round" data-tip="K${r}: ${v.length} inter-link(s)<br>${esc(partners.slice(0, 12).join(", "))}${partners.length > 12 ? "…" : ""}"/>`;
+      }
+      // axis
+      const step = Math.max(1, niceStep(span / 6));
+      for (let t = Math.ceil(v0 / step) * step; t <= v1; t += step) {
+        const tv = t || 1;
+        s += `<line x1="${X(tv)}" x2="${X(tv)}" y1="${H - 14}" y2="${H - 10}" stroke="var(--border)"/><text x="${X(tv)}" y="${H - 1}" font-size="10" text-anchor="middle">${tv}</text>`;
+      }
+      s += `</g><text x="0" y="${barY - arcH / 2}" font-size="10">intra</text><text x="0" y="${barY + 44}" font-size="10">inter</text>`;
+      const zoomed = span < L;
+      host.innerHTML = `<div class="trk-bar"><span class="muted small">${zoomed ? `residues ${Math.max(1, Math.round(v0 + 0.5))}–${Math.min(L, Math.round(v1 - 0.5))} of ${L}` : `${L} residues`} · scroll to zoom${seq ? " (sequence shown when fully zoomed)" : ""}, drag to pan, double-click to reset</span>
+        <span class="trk-btns"><button data-z="out" title="Zoom out">−</button><button data-z="in" title="Zoom in">+</button><button data-z="reset" title="Reset"${zoomed ? "" : " disabled"}>reset</button></span></div>` + svg(W, H, s);
+    };
+
+    // zoom keeping residue r under the same screen position; clamp to the sequence
+    const zoomAt = (r, f) => {
+      const v = host._view, span = Math.min(L, Math.max(minSpan, (v.b - v.a) * f));
+      let a = r - (r - v.a) * (span / (v.b - v.a));
+      a = Math.min(Math.max(0.5, a), L + 0.5 - span);
+      host._view = { a, b: a + span, L };
+      draw();
+    };
+    const resAt = (ev) => {
+      const svgEl = host.querySelector("svg"), rc = svgEl.getBoundingClientRect();
+      const px = ((ev.clientX - rc.left) / rc.width) * W;
+      const v = host._view;
+      return v.a + ((Math.min(Math.max(px, padL), W - padR) - padL) / innerW) * (v.b - v.a);
+    };
+    host._handlers = { zoomAt, resAt, draw, L, W, innerW };
+    if (!host._zoomBound) {
+      host._zoomBound = true;
+      host.addEventListener("wheel", (ev) => {
+        if (!ev.target.closest("svg")) return;
+        ev.preventDefault();
+        const h = host._handlers;
+        h.zoomAt(h.resAt(ev), ev.deltaY > 0 ? 1.25 : 0.8);
+      }, { passive: false });
+      host.addEventListener("click", (ev) => {
+        const z = ev.target.closest("[data-z]")?.dataset.z, h = host._handlers;
+        if (!z) return;
+        const v = host._view, mid = (v.a + v.b) / 2;
+        if (z === "reset") { host._view = { a: 0.5, b: h.L + 0.5, L: h.L }; h.draw(); }
+        else h.zoomAt(mid, z === "in" ? 0.5 : 2);
+      });
+      host.addEventListener("dblclick", (ev) => {
+        if (!ev.target.closest("svg")) return;
+        const h = host._handlers;
+        host._view = { a: 0.5, b: h.L + 0.5, L: h.L }; h.draw();
+      });
+      let drag = null;
+      host.addEventListener("pointerdown", (ev) => {
+        if (!ev.target.closest("svg") || ev.button > 1) return;
+        if (ev.button === 1) ev.preventDefault(); // middle button pans instead of autoscrolling
+        drag = { x: ev.clientX, v: { ...host._view }, w: host.querySelector("svg").getBoundingClientRect().width };
+      });
+      window.addEventListener("pointermove", (ev) => {
+        if (!drag || !host.isConnected) return;
+        const h = host._handlers, span = drag.v.b - drag.v.a;
+        if (span >= h.L) return;
+        let a = drag.v.a - ((ev.clientX - drag.x) / drag.w) * (h.W / h.innerW) * span;
+        a = Math.min(Math.max(0.5, a), h.L + 0.5 - span);
+        host._view = { a, b: a + span, L: h.L };
+        h.draw();
+      });
+      window.addEventListener("pointerup", () => (drag = null));
     }
-    // axis
-    for (const t of ticks(L)) s += `<line x1="${X(t)}" x2="${X(t)}" y1="${H - 14}" y2="${H - 10}" stroke="var(--border)"/><text x="${X(t)}" y="${H - 1}" font-size="10" text-anchor="middle">${t}</text>`;
-    s += `<text x="0" y="${barY - arcH / 2}" font-size="10">intra</text><text x="0" y="${barY + 44}" font-size="10">inter</text>`;
-    host.innerHTML = svg(W, H, s);
+    draw();
     return { nIntra: intra.length, nInter: inter.length, L };
   };
 
@@ -179,7 +260,7 @@
     : /^L(\d+)$/.test(id) ? `Domain between TM${+id.slice(1)} and TM${+id.slice(1) + 1}` : id;
   V.loopRange = (l, len) => { const [a, b] = String(l["Loop Range"]).split("-"); return [+a || 1, b === "Ct" ? len : +b]; };
 
-  V.topology = function (host, det, len) {
+  V.topology = function (host, det, len, trackHost) {
     const up = det?.uniprot, L = up?.len || len;
     const loops = det?.loops || [];
     if (!loops.length || !L) { host.innerHTML = ""; return false; }
@@ -226,7 +307,7 @@
     });
     // extra room above the top line and below the bottom line for the rotated residue-range labels;
     // spacing between the chain lines and the membrane is unchanged
-    const mY = 136, mH = 34, topY = mY - 48, botY = mY + mH + 48, upY = botY + 124, H = upY + 30;
+    const mY = 136, mH = 34, topY = mY - 48, botY = mY + mH + 48, H = botY + 82;
     const edge = (top) => (top ? mY : mY + mH);
     const yOf = (top) => (top ? topY : botY);
     const color = (r) => r.kind === "xl" ? (V.AGREE_COLORS[r.xl.Agreement] || "var(--muted)") : "var(--muted)";
@@ -277,22 +358,19 @@
     const r0 = regs[0], rN = regs[regs.length - 1];
     if (r0.side) s += badge(r0.x0 - 10, yOf(isTop(r0.side)), "N") + `<text x="${r0.x0 - 10}" y="${yOf(isTop(r0.side)) + (isTop(r0.side) ? -14 : 22)}" font-size="9.5" text-anchor="middle">1</text>`;
     if (rN.side) s += badge(rN.x1 + 10, yOf(isTop(rN.side)), "C") + `<text x="${rN.x1 + 10}" y="${yOf(isTop(rN.side)) + (isTop(rN.side) ? -14 : 22)}" font-size="9.5" text-anchor="middle">${L}</text>`;
-    // UniProt annotation track (same x scale)
-    s += `<text x="4" y="${upY - 8}" font-size="10.5" font-weight="600">UniProt annotation</text>`;
-    // key for the track colours (side names depend on the protein, so drawn here rather than in the HTML legend)
-    let kx = 140;
-    [[V.SIDE_COLORS.top, `${V.SIDE_NAMES[topCode]} (TOPO_DOM)`], [V.SIDE_COLORS.bottom, `${V.SIDE_NAMES[bottomCode]} (TOPO_DOM)`],
-     ["var(--surface-2)", "not annotated"], ["var(--ink-2)", "TRANSMEM"]].forEach(([c, t]) => {
-      s += `<rect x="${kx}" y="${upY - 17}" width="14" height="10" rx="2" fill="${c}" stroke="var(--border)" stroke-width="0.5"/>
-        <text x="${kx + 19}" y="${upY - 8}" font-size="10">${esc(t)}</text>`;
-      kx += 19 + t.length * 5.6 + 16;
-    });
-    regs.forEach((r) => {
-      const fill = r.upSide ? (isTop(r.upSide) ? V.SIDE_COLORS.top : V.SIDE_COLORS.bottom) : "var(--surface-2)";
-      s += `<rect x="${r.x0}" y="${upY}" width="${Math.max(1, r.x1 - r.x0)}" height="12" fill="${fill}" stroke="var(--surface)" stroke-width="1" data-tip="${esc(`${V.regionName(r.id)} ${r.a}–${r.b}<br>UniProt TOPO_DOM: ${r.upNote || "not annotated"}`)}"/>`;
-    });
-    tms.forEach((t) => (s += `<rect x="${t.x0}" y="${upY - 3}" width="${tmW}" height="18" rx="3" fill="var(--ink-2)" data-tip="TRANSMEM ${t[0]}–${t[1]}"/>`));
     host.innerHTML = svg(W, H, s);
+    // UniProt annotation track (same x scale), drawn separately below the legend
+    if (trackHost) {
+      let u = "";
+      regs.forEach((r) => {
+        const fill = r.upSide ? (isTop(r.upSide) ? V.SIDE_COLORS.top : V.SIDE_COLORS.bottom) : "var(--surface-2)";
+        u += `<rect x="${r.x0}" y="6" width="${Math.max(1, r.x1 - r.x0)}" height="12" fill="${fill}" stroke="var(--surface)" stroke-width="1" data-tip="${esc(`${V.regionName(r.id)} ${r.a}–${r.b}<br>UniProt TOPO_DOM: ${r.upNote || "not annotated"}`)}"/>`;
+      });
+      tms.forEach((t) => (u += `<rect x="${t.x0}" y="3" width="${tmW}" height="18" rx="3" fill="var(--ink-2)" data-tip="TRANSMEM ${t[0]}–${t[1]}"/>`));
+      const sw = (c, t) => `<span><span class="sw" style="background:${c};height:10px;width:14px;outline:0.5px solid var(--border)"></span>${esc(t)}</span>`;
+      trackHost.innerHTML = `<div class="topo-track-title">UniProt annotation</div>${svg(W, 24, u)}
+        <div class="legend">${sw(V.SIDE_COLORS.top, `${V.SIDE_NAMES[topCode]} (TOPO_DOM)`)}${sw(V.SIDE_COLORS.bottom, `${V.SIDE_NAMES[bottomCode]} (TOPO_DOM)`)}${sw("var(--surface-2)", "not annotated")}${sw("var(--ink-2)", "TRANSMEM")}</div>`;
+    }
     return { regs, tms, topCode, bottomCode };
   };
 

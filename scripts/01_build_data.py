@@ -138,11 +138,46 @@ def read_uniprot_genes(path):
                 for r in csv.DictReader(fh, delimiter="\t") if r["Gene Names"].strip()}
 
 
+def read_external_localization(path_up):
+    """OpenCell (graded annotations, by UniProt accession of the tagged target) and
+    HPA (main / additional location, by gene symbol) for the protein pages."""
+    import csv
+    import gzip
+    import zipfile
+    loc = RAW / "localization"
+    ann = pd.read_csv(loc / "opencell_localization_annotations.csv").set_index("ensg_id")
+    oc = {}
+    for x in json.load(open(loc / "opencell_lines.json")):
+        m, acc = x["metadata"], (x.get("uniprot_metadata") or {}).get("uniprot_id")
+        if not acc:
+            continue
+        a = ann.loc[m["ensg_id"]] if m["ensg_id"] in ann.index else None
+        grades = {g: clean(a[f"annotations_grade_{g}"]) if a is not None else None for g in (3, 2, 1)}
+        oc[acc] = {"id": f"CID{m['cell_line_id']:06d}", "gene": m["target_name"],
+                   **{f"g{g}": v.split(";") if v else [] for g, v in grades.items()}}
+    with zipfile.ZipFile(loc / "hpa_subcellular_location.tsv.zip") as z:
+        hpa_df = pd.read_csv(z.open("subcellular_location.tsv"), sep="\t")
+    by_name = {}
+    for r in hpa_df.itertuples(index=False):
+        by_name.setdefault(r[1], {"ensg": r[0], "name": r[1], "rel": clean(r[2]),
+                                  "main": str(r[3]).split(";") if clean(r[3]) else [],
+                                  "add": str(r[4]).split(";") if clean(r[4]) else []})
+    hpa = {}
+    with gzip.open(path_up, "rt") as fh:
+        for r in csv.DictReader(fh, delimiter="\t"):
+            names = [n for n in re.split(r"[;\s]+", r["Gene Names"].strip()) if n]
+            hit = next((by_name[n] for n in names if n in by_name), None)  # primary symbol first
+            if hit:
+                hpa[r["Entry"]] = hit
+    return oc, hpa
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     seqs, fasta_gene = read_fasta(RAW / "sequences" / "LOP_DSBSO_target.fasta")
     up_topo = read_uniprot_topology(RAW / "sequences" / "uniprot_reviewed_human.tsv.gz")
     up_gene = read_uniprot_genes(RAW / "sequences" / "uniprot_reviewed_human.tsv.gz")
+    oc_loc, hpa_loc = read_external_localization(RAW / "sequences" / "uniprot_reviewed_human.tsv.gz")
 
     # ── Table S2: annotation of all cross-linked proteins + markers ──────────
     s2 = TAB / "Supplementary_Table_2_HEK_markers.xlsx"
@@ -375,6 +410,9 @@ def main():
             "slims": slim_by.get(a, []),
             "contact": cs_by.get(a),
             "uniprot": up_topo.get(a),
+            "opencell": oc_loc.get(a),
+            "hpa": hpa_loc.get(a),
+            "seq": seqs.get(a),
         }
     if (OUT / "details").exists():
         shutil.rmtree(OUT / "details")

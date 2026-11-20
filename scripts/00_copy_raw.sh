@@ -36,3 +36,10 @@ done
 # Pinned UniProt release used by the paper (TRANSMEM / TOPO_DOM positions for topology diagrams)
 UP=$RAW/sequences/uniprot_reviewed_human.tsv.gz
 [[ -s "$UP" ]] || curl -sSfL -o "$UP" https://raw.githubusercontent.com/zhangzh-orange/DUC-XL-MS/main/data/raw/uniprot_reviewed_human.tsv.gz
+
+# External localization atlases shown next to UniProt on protein pages (downloaded once, then kept)
+LOC=$RAW/localization
+mkdir -p "$LOC"
+[[ -s "$LOC/hpa_subcellular_location.tsv.zip" ]] || curl -sSfL -o "$LOC/hpa_subcellular_location.tsv.zip" https://www.proteinatlas.org/download/tsv/subcellular_location.tsv.zip
+[[ -s "$LOC/opencell_localization_annotations.csv" ]] || curl -sSfL -o "$LOC/opencell_localization_annotations.csv" https://opencell.czbiohub.org/data/datasets/opencell-localization-annotations.csv
+[[ -s "$LOC/opencell_lines.json" ]] || curl -sSfL -o "$LOC/opencell_lines.json" "https://opencell.czbiohub.org/api/lines?publication_ready=true"
