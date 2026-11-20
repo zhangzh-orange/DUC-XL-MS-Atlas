@@ -61,4 +61,7 @@ The site has no access control: anyone with the URL can view and download the da
   8GLP trimmed to RACK1 + 25 Å context).
 * Code links and the XL_MOPLC schematic (`site/img/xl_moplc_pipeline.png`) come from
   https://github.com/zhangzh-orange/DUC-XL-MS (MIT).
+* Localization from other resources on protein pages (downloaded 2026-11-20, kept in data/raw/localization):
+  OpenCell graded annotations + tagged lines (matched by UniProt accession, links to /target/CID…) and
+  HPA subcellular_location.tsv (matched by gene symbol, links to the HPA subcellular page).
 * Libraries via CDN: graphology 0.25.4, sigma 2.4.0, 3Dmol 2.4.0.

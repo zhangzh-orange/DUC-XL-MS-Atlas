@@ -93,6 +93,27 @@
   };
 
   /* ── protein ──────────────────────────────────────────────────────────── */
+  // UniProt / OpenCell / HPA localization side by side, each linking to its own page
+  const OC_NAMES = { er: "ER", nucleolus_gc: "nucleolus (granular component)", nucleolus_fc_dfc: "nucleolus (fibrillar centre / DFC)", big_aggregates: "big aggregates", cell_contact: "cell contact", focal_adhesions: "focal adhesions", nuclear_membrane: "nuclear membrane", nuclear_punctae: "nuclear punctae" };
+  const extLoc = (acc, gene, det) => {
+    const link = (href, txt) => `<a href="${href}" target="_blank" rel="noopener">${txt} ↗</a>`;
+    const none = (txt) => `<span class="muted">${txt}</span>`;
+    const cc = det?.cc ? esc(String(det.cc).replace(/SUBCELLULAR LOCATION:\s*/g, "").replace(/\{[^}]*\}/g, "").replace(/\s+([;.,])/g, "$1")) : none("no subcellular location annotated");
+    const oc = det?.opencell;
+    const ocTxt = oc ? [[3, "prominent"], [2, "clear"], [1, "weak"]].filter(([g]) => oc[`g${g}`].length)
+      .map(([g, w]) => `<span class="muted">${w}:</span> ${oc[`g${g}`].map((x) => esc(OC_NAMES[x] || x)).join(", ")}`).join("<br>") || none("tagged, no graded annotation")
+      : none("not among the OpenCell tagged targets");
+    const hpa = det?.hpa;
+    const hpaTxt = hpa ? [hpa.main.length && `<span class="muted">main:</span> ${esc(hpa.main.join(", "))}`, hpa.add.length && `<span class="muted">additional:</span> ${esc(hpa.add.join(", "))}`]
+      .filter(Boolean).join("<br>") + (hpa.rel ? `<br><span class="muted">reliability: ${esc(hpa.rel)}</span>` : "")
+      : none("no HPA subcellular data");
+    return `<div class="ext-loc">
+      <div class="ext-src">${link(`https://www.uniprot.org/uniprotkb/${esc(acc)}/entry#subcellular_location`, "UniProt")}</div><div class="ext-val">${cc}</div>
+      <div class="ext-src">${oc ? link(`https://opencell.czbiohub.org/target/${esc(oc.id)}`, "OpenCell") : "OpenCell"}</div><div class="ext-val">${ocTxt}</div>
+      <div class="ext-src">${hpa ? link(`https://www.proteinatlas.org/${esc(hpa.ensg)}-${esc(hpa.name)}/subcellular`, "HPA") : "HPA"}</div><div class="ext-val">${hpaTxt}</div>
+    </div>`;
+  };
+
   views.protein = async (el, q) => {
     const acc = App.resolve(q);
     if (!acc) { el.innerHTML = `<div class="card"><h2>${esc(q)} is not in the DUC-XL-MS dataset</h2><p class="muted">Only cross-linked proteins (and proteins in the augmented core interactome) have pages.</p></div>`; return; }
@@ -158,7 +179,8 @@
             ${mo?.Correction ? `<dt>Curation</dt><dd>${esc(mo.Correction)}${mo.Evidence ? ` — ${esc(mo.Evidence)}` : ""}</dd>` : ""}
             ${mt ? `<dt>Topology marker</dt><dd>${esc(mt["Topology Pole"])}${mt.Correction ? ` · ${esc(mt.Correction)}` : ""}</dd>` : ""}
           </dl>
-          ${det?.cc ? `<div class="cc-text"><b>UniProt:</b> ${esc(String(det.cc).replace(/^SUBCELLULAR LOCATION:\s*/, "").replace(/\{[^}]*\}/g, "").replace(/\s+([;.,])/g, "$1").replace(/SUBCELLULAR LOCATION:\s*/g, ""))}</div>` : ""}
+          <h3 class="ext-head">Other resources</h3>
+          ${extLoc(acc, p.gene, det)}
         </div>
         <div class="card span2">
           <h2>Interaction neighbourhood <span class="small muted">${rows.length > 70 ? "top 70 by residue pairs" : ""}</span></h2>
@@ -180,8 +202,9 @@
           <span><span class="dot" style="background:var(--ink-2);border-radius:2px;width:8px;height:14px"></span> TM helix (UniProt)</span>
           <span><b>N</b> / <b>C</b>: protein termini (residue 1 / last residue)</span>
         </div>
+        <div id="topo-track" class="topo-track"></div>
         ${det.tm?.["Inconsistent Flag"] ? `<p class="small tag-conflict" style="margin:8px 0 0">⚠ The assigned domain sides are not mutually consistent with the UniProt TM helices (dashed red helix: both flanking domains on the same side).</p>` : ""}
-        <div id="topo-tbl" style="margin-top:12px"></div>
+        <div id="topo-tbl" style="margin-top:20px"></div>
       </section>` : ""}
       <section class="card" style="margin-bottom:16px">
         <h2>Residue-level cross-link map
@@ -201,7 +224,7 @@
     App.bindTips(el);
     viz.ego($("#ego"), { gene: p.gene, loc }, rows, 70);
     if (det?.loops?.length) {
-      const topo = viz.topology($("#topo"), det, p.len);
+      const topo = viz.topology($("#topo"), det, p.len, $("#topo-track"));
       const L = det.uniprot?.len || p.len;
       $("#topo-tbl").innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>Domain</th><th class="num">Residues</th><th>DUC-XL-MS side</th><th>UniProt (TOPO_DOM)</th><th>Comparison</th><th class="num">Residue pairs</th><th class="num">Purity</th><th>Confidence</th></tr></thead><tbody>${
         det.loops.slice().sort((a, b) => viz.loopRange(a, L)[0] - viz.loopRange(b, L)[0]).map((l) => {
