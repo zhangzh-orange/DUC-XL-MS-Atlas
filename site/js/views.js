@@ -99,7 +99,7 @@
             <tr><th scope="row">What is measured</th><td>Proteins that co-purify with a tagged bait</td><td>Scores combining experiments, curated pathways, co-expression and text mining</td><td>Chemical cross-links, in affinity-enriched endosomes (EndoMAP) or in fractionated (Bartolec) or intact (Clasen) cells</td><td class="us">Chemical cross-links in a mildly lysed whole-cell preparation, then fractionated by differential ultracentrifugation</td></tr>
             <tr><th scope="row">Direct contact?</th><td><span class="no">Not resolved</span> — direct and indirect complex members</td><td><span class="no">Not resolved</span> — functional association, not necessarily physical</td><td><span class="yes">Yes</span></td><td class="us"><span class="yes">Yes</span> — the two residues lie within cross-linker reach</td></tr>
             <tr><th scope="row">Binding site</th><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="yes">Residue on both proteins</span></td><td class="us"><span class="yes">Residue on both proteins</span> for every link</td></tr>
-            <tr><th scope="row">Scale of the residue-level map</th><td><span class="no">—</span></td><td><span class="no">—</span></td><td>Whole-cell datasets: ~9-fold fewer PPIs than DUC-XL-MS (Fig. 1B); EndoMAP: endosomes</td><td class="us">${fmt(c.residuePairs.HEK293)} residue pairs, ${fmt(c.interPPIs.HEK293)} PPIs across ${fmt(c.proteinsCrosslinked)} proteins (HEK293)</td></tr>
+            <tr><th scope="row">Scale of the residue-level map</th><td><span class="no">—</span></td><td><span class="no">—</span></td><td>Whole-cell datasets: ~9-fold fewer PPIs than DUC-XL-MS; EndoMAP: endosomes</td><td class="us">${fmt(c.residuePairs.HEK293)} residue pairs, ${fmt(c.interPPIs.HEK293)} PPIs across ${fmt(c.proteinsCrosslinked)} proteins (HEK293)</td></tr>
             <tr><th scope="row">Weak, transient organellar contacts</th><td>Often lost during lysis and purification</td><td>Only where previously reported</td><td>EndoMAP: cytosol-facing endosomal machinery partly lost during endosome enrichment</td><td class="us">Preserved: cross-linking before any purification</td></tr>
             <tr><th scope="row">Same data also gives</th><td>OpenCell: localization by imaging</td><td>—</td><td>—</td><td class="us">Organelle localization, membrane side of loops, contact sites, structural restraints</td></tr>
           </tbody></table></div>
@@ -896,7 +896,7 @@
     const colOfGene = Object.fromEntries(info.chains.map((c) => [c.Gene, chainCol[c.Chain]]));
     $("#ref-sec").innerHTML = `
       <div class="card"><h2>${esc(ref.title)} <span class="small muted">${rcsb(ref.pdb)}</span></h2>
-        <div class="card-sub">Experimental reference (Supplementary Note 2). Subunits use the colour of their human counterpart in the model above.</div>
+        <div class="card-sub">Experimental reference structure. Subunits use the colour of their human counterpart in the model above.</div>
         <div class="card mol-view" id="ref-mol" style="height:420px;box-shadow:none"></div></div>
       <div class="card"><h2>Model vs. ${esc(ref.pdb)}</h2>
         <div class="card-sub">Class C core subunits, TM-align of the human model against the yeast structure</div>
