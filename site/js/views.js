@@ -240,7 +240,7 @@
       <section class="grid g3" style="margin-bottom:16px">
         <div class="card${p.newLoc ? " has-new" : ""}" id="sec-loc">
           <h2>Localization ${p.newLoc ? App.newBadge() : ""}</h2>
-          <div class="card-sub">${loc.length ? "DUC-XL-MS: graph-based propagation from curated organelle markers (Table S3)" : "No DUC-XL-MS assignment — UniProt annotation shown"}</div>
+          <div class="card-sub">${loc.length ? "DUC-XL-MS: graph-based propagation from curated organelle markers" : "No DUC-XL-MS assignment — UniProt annotation shown"}</div>
           <dl class="kv">
             ${loc.length ? `<dt>DUC-XL-MS</dt><dd><div class="chips">${App.locChips(p)}</div>${p.newLoc ? `<div class="small" style="margin-top:4px;color:var(--new-ink)">${App.locList(p.newLoc).map(App.orgLabel).map(esc).join(", ")}: not annotated in UniProt</div>` : ""}</dd>` : ""}
             <dt>UniProt</dt><dd>${det?.upTerms?.length ? esc(det.upTerms.join("; ")) : `<span class="muted">no subcellular location</span>`}</dd>
@@ -287,10 +287,10 @@
       </section>
       <section class="card" style="margin-bottom:16px">
         <h2>Interactors</h2>
-        <div class="card-sub">HEK293 / Jurkat: directly cross-linked in DUC-XL-MS (residue pairs from Table S1). "… augmented": not a cited interaction — reported by that database and added by our triadic-closure rule because both proteins share at least one DUC-XL-MS neighbour (listed in the last column; Table S5).</div>
+        <div class="card-sub">HEK293 / Jurkat: directly cross-linked in DUC-XL-MS. "… augmented": not a cited interaction — reported by that database and added by our triadic-closure rule because both proteins share at least one DUC-XL-MS neighbour (listed in the last column).</div>
         <div id="int-tbl"></div>
       </section>
-      ${det?.slims?.length ? `<section class="card has-new" style="margin-bottom:16px" id="sec-slim"><h2>Candidate short linear motifs ${App.newBadge("NEW", "Predicted by the cross-link-guided AF3 screen of this study")}</h2><div class="card-sub">AlphaFold3 SLiM screen of cross-link-supported PPIs (Table S4)</div><div id="slim-tbl"></div></section>` : ""}
+      ${det?.slims?.length ? `<section class="card has-new" style="margin-bottom:16px" id="sec-slim"><h2>Candidate short linear motifs ${App.newBadge("NEW", "Predicted by the cross-link-guided AF3 screen of this study")}</h2><div class="card-sub">AlphaFold3 SLiM screen of cross-link-supported PPIs</div><div id="slim-tbl"></div></section>` : ""}
       ${footer()}`;
 
     App.bindTips(el);
@@ -350,24 +350,24 @@
     ];
     el.innerHTML = `
       <div class="page-head"><div class="eyebrow" style="color:var(--new-ink)">★ New findings</div><h1>What DUC-XL-MS adds</h1>
-        <p>Findings of this study beyond UniProt and the reference databases, in one place: new membrane-loop sides and credible topology corrections (Table S3), contact-site candidates not in CORUM or MCS databases (Table S3), candidate SLiMs (Table S4), and localizations that UniProt does not list (this atlas: propagated labels of Table S3 compared with the UniProt annotation). Each entry links to the protein page, where the new finding is highlighted next to the residue-level evidence behind it.</p></div>
+        <p>Findings of this study beyond UniProt and the reference databases, in one place: new membrane-loop sides and credible topology corrections, contact-site candidates not in CORUM or MCS databases, candidate SLiMs, and localizations that UniProt does not list (propagated labels compared with the UniProt annotation). Each entry links to the protein page, where the new finding is highlighted next to the residue-level evidence behind it.</p></div>
       <section class="grid g4 new-tiles" style="margin-bottom:16px">${secs.map(([k, l, n, u]) =>
         `<a class="card stat" href="#/new?s=${k}" data-sec="${k}"><div class="v num">${fmt(n)}</div><div class="l">${l} <span class="nb">NEW</span></div><div class="s">${u}</div></a>`).join("")}</section>
       <section class="card has-new" id="new-loc" style="margin-bottom:16px">
         <h2>New organelle localizations</h2>
-        <div class="card-sub">Proteins confidently placed by DUC-XL-MS label propagation (Table S3) in a compartment that their UniProt subcellular location does not list (UniProt terms mapped to compartments with the term table of Table S2). ${fmt(c.newLocNoUniProt)} of them had no UniProt organelle annotation at all.</div>
+        <div class="card-sub">Proteins confidently placed by DUC-XL-MS label propagation in a compartment that their UniProt subcellular location does not list (UniProt terms mapped to compartments with the curated term table). ${fmt(c.newLocNoUniProt)} of them had no UniProt organelle annotation at all.</div>
         <div id="t-loc"></div></section>
       <section class="card has-new" id="new-topo" style="margin-bottom:16px">
         <h2>New membrane topology</h2>
-        <div class="card-sub">${fmt(c.novelLoops)} loop sides in ${fmt(c.novelLoopProteins)} transmembrane proteins that UniProt does not annotate, and ${fmt(c.corrections)} high-confidence conflicts that credibly correct UniProt (Table S3).</div>
+        <div class="card-sub">${fmt(c.novelLoops)} loop sides in ${fmt(c.novelLoopProteins)} transmembrane proteins that UniProt does not annotate, and ${fmt(c.corrections)} high-confidence conflicts that credibly correct UniProt.</div>
         <div id="t-topo"></div></section>
       <section class="card has-new" id="new-slim" style="margin-bottom:16px">
         <h2>Candidate short linear motifs</h2>
-        <div class="card-sub">${fmt(c.slimCandidates)} candidate motifs in ${fmt(c.slimProteins)} proteins from the cross-link-guided AlphaFold3 screen (Table S4; 43.7% sensitivity at 4.4% FDR against ELM-derived controls). These are predictions: several match known ELM motif classes (e.g. PAM2, NLS, 14-3-3 sites), while hubs such as ERH and RACK1 bind motifs absent from ELM.</div>
+        <div class="card-sub">${fmt(c.slimCandidates)} candidate motifs in ${fmt(c.slimProteins)} proteins from the cross-link-guided AlphaFold3 screen (43.7% sensitivity at 4.4% FDR against ELM-derived controls). These are predictions: several match known ELM motif classes (e.g. PAM2, NLS, 14-3-3 sites), while hubs such as ERH and RACK1 bind motifs absent from ELM.</div>
         <div id="t-slim"></div></section>
       <section class="card has-new" id="new-contact" style="margin-bottom:16px">
         <h2>New contact-site candidates</h2>
-        <div class="card-sub">Dual-localized or topology-resolved transmembrane proteins that are not trafficking (CORUM) or membrane-contact-site machinery in existing databases (Table S3).</div>
+        <div class="card-sub">Dual-localized or topology-resolved transmembrane proteins that are not trafficking (CORUM) or membrane-contact-site machinery in existing databases.</div>
         <div id="t-contact"></div></section>
       ${footer()}`;
     const g = (acc, gene) => App.protLink(acc, gene || App.geneOf(acc));
