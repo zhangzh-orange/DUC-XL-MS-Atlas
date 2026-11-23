@@ -77,7 +77,7 @@
         <div class="card-sub">What each type of resource reports about a protein–protein interaction</div>
         <div class="cmp-wrap"><table class="cmp">
           <colgroup><col style="width:19%"><col style="width:27%"><col style="width:27%"><col style="width:27%"></colgroup>
-          <thead><tr><th></th><th>AP-MS interactomes<br><span class="small">BioPlex, OpenCell</span></th><th>Association databases<br><span class="small">STRING</span></th><th class="us">DUC-XL-MS Atlas<br><span class="small">this study</span></th></tr></thead>
+          <thead><tr><th></th><th>AP-MS interactomes<br><span class="small"><a href="https://bioplex.hms.harvard.edu/" target="_blank" rel="noopener">BioPlex ↗</a>, <a href="https://opencell.czbiohub.org/" target="_blank" rel="noopener">OpenCell ↗</a></span></th><th>Association databases<br><span class="small"><a href="https://string-db.org/" target="_blank" rel="noopener">STRING ↗</a></span></th><th class="us">DUC-XL-MS Atlas<br><span class="small">this study</span></th></tr></thead>
           <tbody>
             <tr><th scope="row">What is measured</th><td>Proteins that co-purify with a tagged bait</td><td>Scores combining experiments, curated pathways, co-expression and text mining</td><td class="us">Chemical cross-links between two residues, read out by MS</td></tr>
             <tr><th scope="row">Direct contact?</th><td><span class="no">Not resolved</span> — direct and indirect complex members</td><td><span class="no">Not resolved</span> — functional association, not necessarily physical</td><td class="us"><span class="yes">Yes</span> — the two residues lie within cross-linker reach</td></tr>
