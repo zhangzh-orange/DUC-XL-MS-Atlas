@@ -284,8 +284,9 @@ async function route() {
 
 /* ── theme ─────────────────────────────────────────────────────────────── */
 function initTheme() {
+  // dark by default (set on <html>); a theme chosen with the toggle is remembered
   const t = store.lget("ducxl-theme");
-  if (t) document.documentElement.dataset.theme = t;
+  document.documentElement.dataset.theme = t || "dark";
   $("#theme-btn").addEventListener("click", () => {
     const dark = document.documentElement.dataset.theme
       ? document.documentElement.dataset.theme === "dark"
