@@ -284,15 +284,16 @@ async function route() {
 
 /* ── theme ─────────────────────────────────────────────────────────────── */
 function initTheme() {
-  // dark by default (set on <html>); a theme chosen with the toggle is remembered
-  const t = store.lget("ducxl-theme");
+  // dark by default (set on <html>); a theme chosen with the toggle is remembered.
+  // Key bumped to -v2 so choices saved while the site followed the system theme no longer apply.
+  const t = store.lget("ducxl-theme-v2");
   document.documentElement.dataset.theme = t || "dark";
   $("#theme-btn").addEventListener("click", () => {
     const dark = document.documentElement.dataset.theme
       ? document.documentElement.dataset.theme === "dark"
       : matchMedia("(prefers-color-scheme: dark)").matches;
     const next = dark ? "light" : "dark";
-    document.documentElement.dataset.theme = next; store.lset("ducxl-theme", next);
+    document.documentElement.dataset.theme = next; store.lset("ducxl-theme-v2", next);
     window.dispatchEvent(new Event("themechange"));
   });
 }
