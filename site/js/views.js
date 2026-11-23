@@ -66,7 +66,7 @@
           </div>
         </div>
         <div class="card hero-imap">
-          <div class="eyebrow" style="color:var(--accent)">Example · interface map of ${HERO_EXAMPLE}</div>
+          <div class="eyebrow" style="color:var(--accent)"><span class="ex-badge">Example</span> interface map of ${HERO_EXAMPLE}</div>
           <div id="hero-imap"><div class="loading">Loading…</div></div>
           <div class="cap">Each dot is a cross-linked lysine; each row is one partner. Hover a row to see which residue on ${HERO_EXAMPLE} links to which residue on the partner. <a href="#/protein/${exAcc}">Open ${HERO_EXAMPLE} →</a></div>
         </div>

@@ -19,6 +19,7 @@
   --viol: #ee6677;
   --aug: #a0a3aa;
   --new-bg: #fff3c4; --new-ink: #7a4f00; --new-bd: #e0a800;
+  --ex-bg: #e2f3ef; --ex-ink: #1d6b5c; --ex-bd: #44aa99;
   --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
   --radius: 10px;
   --mono: "JetBrains Mono", ui-monospace, monospace;
@@ -31,6 +32,7 @@
     --grid: #2a2d33; --edge: rgba(200, 204, 212, 0.22); --net-edge: #45484e; --ok: #6cc28f; --bad: #f08080;
     --sat: #77aadd; --viol: #ee8899; --aug: #6c7079; --shadow: none; color-scheme: dark;
     --new-bg: #3b2f0b; --new-ink: #f5d06a; --new-bd: #b98a12;
+    --ex-bg: #12302a; --ex-ink: #82d6c4; --ex-bd: #44aa99;
   }
 }
 :root[data-theme="dark"] {
@@ -39,6 +41,7 @@
   --grid: #2a2d33; --edge: rgba(200, 204, 212, 0.22); --net-edge: #45484e; --ok: #6cc28f; --bad: #f08080;
   --sat: #77aadd; --viol: #ee8899; --aug: #6c7079; --shadow: none; color-scheme: dark;
     --new-bg: #3b2f0b; --new-ink: #f5d06a; --new-bd: #b98a12;
+    --ex-bg: #12302a; --ex-ink: #82d6c4; --ex-bd: #44aa99;
 }
 
 * { box-sizing: border-box; }
@@ -299,3 +302,7 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--new-bd); }
 .readouts b { display: block; color: var(--accent); }
 .readouts span { color: var(--ink-2); }
 @media (max-width: 900px) { .steps { grid-template-columns: 1fr; } .readouts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* "Example" marker on the home interface map: teal, distinct from accent blue and NEW gold */
+.ex-badge { display: inline-block; padding: 1px 8px; margin-right: 6px; border-radius: 999px; background: var(--ex-bg); color: var(--ex-ink);
+  border: 1px solid var(--ex-bd); font-weight: 700; letter-spacing: .08em; }
