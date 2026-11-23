@@ -242,6 +242,79 @@
     return { nIntra: intra.length, nInter: inter.length, L };
   };
 
+  /* ── interface map: which residues contact which partner ───────────── */
+  // One row per cross-linked partner. Left strip: this protein's sequence with the linked
+  // residues; right strip: the partner's sequence (scaled to its own length) with its
+  // linked residues. Hovering a row draws each residue pair as an arc.
+  V.interfaceMap = function (host, acc, det, opts = {}) {
+    const gene = App.geneOf(acc), L = opts.len || det?.seq?.length || 1;
+    const cells = opts.cells || 3;
+    const byP = new Map();
+    for (const x of det?.xl || []) {
+      if (x[0] === acc || !(x[3] & cells)) continue;
+      if (!byP.has(x[0])) byP.set(x[0], []);
+      byP.get(x[0]).push(x);
+    }
+    let rows = [...byP].map(([pa, v]) => {
+      const own = v.map((x) => x[1]).sort((a, b) => a - b);
+      return { pa, v, gene: App.geneOf(pa), plen: App.prot(pa)?.len || Math.max(...v.map((x) => x[2])) + 5,
+        mask: v.reduce((m, x) => m | x[3], 0), mid: own[own.length >> 1] };
+    });
+    rows.sort(opts.sort === "pos" ? (a, b) => a.mid - b.mid || b.v.length - a.v.length
+      : (a, b) => b.v.length - a.v.length || a.gene.localeCompare(b.gene));
+    const total = rows.length;
+    if (opts.max && rows.length > opts.max) rows = rows.slice(0, opts.max);
+    if (!rows.length) { host.innerHTML = `<p class="muted small">No inter-protein cross-links for ${esc(gene)}${cells !== 3 ? " in this cell line" : ""}.</p>`; return { total }; }
+
+    const compact = !!opts.compact;
+    const W = 1000, nameX = compact ? 104 : 118, q0 = nameX + 12, q1 = compact ? 660 : 672, nX = q1 + 32, p0 = q1 + 70, p1 = W - 12;
+    const rowH = compact ? 24 : 22, fpH = compact ? 0 : 34, top = (compact ? 22 : 30) + fpH, H = top + rows.length * rowH + 22;
+    const Xq = (r) => q0 + ((r - 0.5) / L) * (q1 - q0);
+    const col = (m) => V.CELL_COLORS[m] || "var(--ink-2)";
+    let s = `<text x="${q0}" y="12" font-size="11" font-weight="700" style="fill:var(--ink)">${esc(gene)}</text>
+      <text x="${q1}" y="12" font-size="10.5" text-anchor="end" style="fill:var(--muted)">residue 1–${L}</text>
+      <text x="${nX}" y="12" font-size="10.5" text-anchor="middle" style="fill:var(--muted)">pairs</text>
+      <text x="${p0}" y="12" font-size="11" font-weight="700" style="fill:var(--ink)">partner</text>
+      <text x="${p1}" y="12" font-size="10.5" text-anchor="end" style="fill:var(--muted)">own length</text>`;
+    // interface footprint: distinct partners per sequence bin, with TM helices and SLiMs
+    if (fpH) {
+      const nb = Math.min(120, L), bins = Array.from({ length: nb }, () => new Set());
+      for (const r of [...byP].flatMap(([pa, v]) => v.map((x) => [pa, x[1]]))) bins[Math.min(nb - 1, Math.floor(((r[1] - 1) / L) * nb))].add(r[0]);
+      const mx = Math.max(1, ...bins.map((b) => b.size)), bw = (q1 - q0) / nb, base = 20 + fpH - 6;
+      bins.forEach((b, i) => {
+        if (!b.size) return;
+        const h = 3 + (fpH - 12) * (b.size / mx), a = Math.round(1 + (i / nb) * L), z = Math.round(((i + 1) / nb) * L);
+        s += `<rect x="${q0 + i * bw}" y="${base - h}" width="${Math.max(1, bw - 0.6)}" height="${h}" fill="var(--accent)" fill-opacity=".55" data-tip="Residues ${a}–${z}: ${b.size} partner(s) cross-linked here"/>`;
+      });
+      s += `<line x1="${q0}" x2="${q1}" y1="${base}" y2="${base}" stroke="var(--border)"/>`;
+      for (const tm of det?.uniprot?.tm || []) s += `<rect x="${Xq(tm[0])}" y="${base + 1}" width="${Math.max(2, Xq(tm[1]) - Xq(tm[0]))}" height="4" fill="var(--ink-2)" data-tip="TM helix ${tm[0]}–${tm[1]} (UniProt)"/>`;
+      for (const m of det?.slims || []) s += `<rect x="${Xq(m["Start Residue"])}" y="${base + 1}" width="${Math.max(3, Xq(m["End Residue"]) - Xq(m["Start Residue"]))}" height="4" fill="#EE7733" data-tip="Candidate SLiM ${m["Start Residue"]}–${m["End Residue"]} → ${esc(m["Partner Gene Symbol"])}"/>`;
+      s += `<text x="${nameX}" y="${base - 4}" font-size="10" text-anchor="end" style="fill:var(--muted)">interface</text><text x="${nameX}" y="${base + 7}" font-size="10" text-anchor="end" style="fill:var(--muted)">footprint</text>`;
+    }
+    rows.forEach((r, k) => {
+      const y = top + k * rowH + rowH / 2, Xp = (x) => p0 + ((x - 0.5) / r.plen) * (p1 - p0);
+      const href = App.idx.byAcc.has(r.pa) ? `#/protein/${r.pa}` : null;
+      let g = `<rect class="row-bg" x="0" y="${y - rowH / 2}" width="${W}" height="${rowH}" rx="4"/>
+        <text class="gname" x="${nameX}" y="${y + 4}" font-size="${compact ? 12 : 11.5}" font-weight="600" text-anchor="end" style="fill:var(--ink)" ${href ? `onclick="location.hash='${href}'"` : ""} data-tip="${esc(`<b>${r.gene}</b> · ${r.v.length} residue pair(s)<br>${App.srcText(r.mask)}`)}">${esc(r.gene)}</text>
+        <line x1="${q0}" x2="${q1}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-width="3" stroke-linecap="round"/>
+        <line x1="${p0}" x2="${p1}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-width="3" stroke-linecap="round"/>
+        <text x="${nX}" y="${y + 4}" font-size="11" text-anchor="middle" class="num" style="fill:var(--ink-2)">${r.v.length}</text>`;
+      for (const x of r.v) {
+        const a = Xq(x[1]), b = Xp(x[2]), tip = `${esc(gene)} <b>K${x[1]}</b> ↔ ${esc(r.gene)} <b>K${x[2]}</b><br>${V.CELL_LABELS[x[3]]}`;
+        g += `<path class="arc" d="M${a},${y} C${a},${y - rowH * 1.6} ${b},${y - rowH * 1.6} ${b},${y}" fill="none" stroke="${col(x[3])}" stroke-width="1.2"/>
+          <circle cx="${a}" cy="${y}" r="3.6" fill="${col(x[3])}" stroke="var(--surface)" stroke-width="1" data-tip="${tip}"/>
+          <circle cx="${b}" cy="${y}" r="3.6" fill="${col(x[3])}" stroke="var(--surface)" stroke-width="1" data-tip="${tip}"/>`;
+      }
+      s += `<g class="row">${g}</g>`;
+    });
+    // axis ticks for this protein
+    const yA = H - 8;
+    for (const tk of ticks(L, compact ? 4 : 6)) s += `<text x="${Xq(tk)}" y="${yA}" font-size="9.5" text-anchor="middle" style="fill:var(--muted)">${tk}</text>`;
+    s += `<text x="${(p0 + p1) / 2}" y="${yA}" font-size="9.5" text-anchor="middle" style="fill:var(--muted)">N → C (each partner scaled to its length)</text>`;
+    host.innerHTML = `<div class="imap">${svg(W, H, s)}</div>`;
+    return { total, shown: rows.length };
+  };
+
   /* ── membrane topology diagram ───────────────────────────────────────── */
   // Side codes used by DUC-XL-MS, named with UniProt topological-domain terms
   V.SIDE_NAMES = { CYT: "Cytoplasmic", LUM: "Lumenal / extracellular", IMS: "Mitochondrial intermembrane", MTX: "Mitochondrial matrix", PXM: "Peroxisomal matrix" };

@@ -55,6 +55,20 @@ App.srcText = (mask) => App.srcNames(mask).map((s) => App.SRC_LABELS[s]).join(";
 App.srcBadges = (mask) => App.srcNames(mask)
   .map((s) => `<span class="badge b-${s}" title="${esc(SRC_TIPS[s])}">${App.SRC_LABELS[s]}</span>`).join("");
 App.isOriginal = (mask) => (mask & (1 | 2)) !== 0;
+/* new findings (relative to UniProt / databases), bitmask from 01_build_data.py */
+App.NOV = { loc: 1, topo: 2, correction: 4, slim: 8, contact: 16 };
+App.newBadge = (txt = "NEW", title = "New in this study: not in UniProt or the reference databases") =>
+  `<span class="nb" title="${esc(title)}">${esc(txt)}</span>`;
+/* compartment chips: DUC-XL-MS assignment with new compartments highlighted, else UniProt as default */
+App.locChips = (p) => {
+  const nw = new Set(App.locList(p.newLoc));
+  if (p.loc) return App.locList(p.loc).map((c) => nw.has(c)
+    ? `<span class="chip is-new" title="DUC-XL-MS localization not annotated in UniProt"><span class="dot" style="background:${App.orgColor(c)}"></span>${esc(App.orgLabel(c))} <span class="nb">NEW</span></span>`
+    : `<span class="chip" title="DUC-XL-MS localization, consistent with UniProt"><span class="dot" style="background:${App.orgColor(c)}"></span>${esc(App.orgLabel(c))}</span>`).join("");
+  if (p.upLoc) return App.locList(p.upLoc).map((c) =>
+    `<span class="chip up" title="UniProt annotation (no DUC-XL-MS assignment)"><span class="dot" style="background:${App.orgColor(c)}"></span>${esc(App.orgLabel(c))} · UniProt</span>`).join("");
+  return `<span class="chip muted">No organelle assignment</span>`;
+};
 
 /* tooltip */
 const tip = () => $("#tooltip");
@@ -237,6 +251,7 @@ App.wireSearch = function (input, box) {
 /* ── router ────────────────────────────────────────────────────────────── */
 App.routes = [
   [/^\/?$/, "home", "home"],
+  [/^\/new(?:\?s=(\w+))?$/, "newFindings", "new"],
   [/^\/network(?:\/(.+))?$/, "network", "network"],
   [/^\/protein\/(.+)$/, "protein", ""],
   [/^\/organelles$/, "organelles", "spatial"],

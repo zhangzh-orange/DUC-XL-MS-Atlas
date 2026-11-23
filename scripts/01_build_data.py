@@ -57,6 +57,7 @@ ORGANELLE_LABELS = {
     "plasma_membrane": "Plasma membrane",
 }
 # Edge source bitmask
+NOV = {"loc": 1, "topo": 2, "correction": 4, "slim": 8, "contact": 16}
 SRC = {"HEK293": 1, "Jurkat": 2, "BioPlex": 4, "OpenCell": 8, "EndoMap": 16}
 
 XL_RE = re.compile(r"(?:sp|tr)\|([^|]+)\|\S+ \((\d+)\)-(?:sp|tr)\|([^|]+)\|\S+ \((\d+)\)")
@@ -172,18 +173,52 @@ def read_external_localization(path_up):
     return oc, hpa
 
 
+def read_uniprot_cc(path):
+    """Accession -> UniProt 'Subcellular location [CC]' text in the pinned release."""
+    import csv
+    import gzip
+    with gzip.open(path, "rt") as fh:
+        return {r["Entry"]: r["Subcellular location [CC]"] for r in csv.DictReader(fh, delimiter="\t")
+                if r["Subcellular location [CC]"].strip()}
+
+
+def uniprot_locations(text, term_class):
+    """Organelle classes and short location terms of a UniProt CC text, parsed with the
+    term -> class table of Table S2 (sheet 2); reproduces 99.3% of the seed markers."""
+    classes, terms = set(), []
+    if not isinstance(text, str):
+        return classes, terms
+    t = re.sub(r"\{[^}]*\}", "", text).replace("SUBCELLULAR LOCATION:", "")
+    t = re.sub(r"\[[^\]]*\]:", "", t)
+    t = t.split("Note=")[0]
+    for st in t.split("."):
+        loc = st.split(";")[0].strip()
+        if not loc:
+            continue
+        if loc not in terms:
+            terms.append(loc)
+        for piece in loc.split(","):
+            c = term_class.get(piece.strip().lower())
+            if c:
+                classes.add(c)
+    return classes, terms
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     seqs, fasta_gene = read_fasta(RAW / "sequences" / "LOP_DSBSO_target.fasta")
     up_topo = read_uniprot_topology(RAW / "sequences" / "uniprot_reviewed_human.tsv.gz")
     up_gene = read_uniprot_genes(RAW / "sequences" / "uniprot_reviewed_human.tsv.gz")
     oc_loc, hpa_loc = read_external_localization(RAW / "sequences" / "uniprot_reviewed_human.tsv.gz")
+    up_cc = read_uniprot_cc(RAW / "sequences" / "uniprot_reviewed_human.tsv.gz")
 
     # ── Table S2: annotation of all cross-linked proteins + markers ──────────
     s2 = TAB / "Supplementary_Table_2_HEK_markers.xlsx"
     ann = pd.read_excel(s2, sheet_name="3. Crosslinked annotation")
     mk_org = pd.read_excel(s2, sheet_name="5. Markers (corrected)")
     mk_top = pd.read_excel(s2, sheet_name="7. Topology (corrected)")
+    term_map = pd.read_excel(s2, sheet_name="2. Organelle mapping")
+    term_class = dict(zip(term_map.iloc[:, 0].str.lower(), term_map.iloc[:, 2]))
 
     # ── Table S3: propagation, topology, contact sites ───────────────────────
     s3 = TAB / "Supplementary_Table_3_HEK_propagation_and_topology.xlsx"
@@ -367,9 +402,37 @@ def main():
             if e[2] & 28 and not e[2] & 3:
                 deg[g][2] += 1
 
+    # What is new relative to UniProt / databases (bitmask NOV):
+    #   localization: a confidently propagated compartment absent from the protein's UniProt CC
+    #   topology: a loop side UniProt does not annotate ("novel"), or a credible correction of UniProt
+    #   SLiM: candidate motif from the AF3 screen; contact site: candidate not in CORUM / MCS databases
+    up_loc, up_terms, new_loc = {}, {}, {}
+    for a in accs:
+        cls_, terms = uniprot_locations(cc_by.get(a) or up_cc.get(a), term_class)
+        up_loc[a] = [c for c in COMPARTMENTS if c in cls_]
+        up_terms[a] = terms
+        p = prop_by.get(a, {})
+        if p.get("Annotation Source") == "propagation" and p.get("Confidence Tier") == "confident":
+            nl = [c for c in str(p["Organelle Localization"]).split(";") if c not in cls_]
+            if nl:
+                new_loc[a] = nl
+    nov = defaultdict(int)
+    for a in new_loc:
+        nov[a] |= NOV["loc"]
+    for r in records(loops):
+        if r["Agreement"] == "novel":
+            nov[r["Protein ID"]] |= NOV["topo"]
+        elif r["Agreement"] == "conflict" and r.get("Credible Correction") == "Yes":
+            nov[r["Protein ID"]] |= NOV["correction"]
+    for a in slim_by:
+        nov[a] |= NOV["slim"]
+    for r in records(contacts):
+        if r["In Database"] == "no":
+            nov[r["Protein ID"]] |= NOV["contact"]
+
     cols = {k: [] for k in ("acc", "gene", "name", "len", "loc", "tier", "src",
                             "cls", "pole", "tm", "topo", "slim", "cs", "dH", "dJ",
-                            "dA", "nXL")}
+                            "dA", "nXL", "upLoc", "newLoc", "nov")}
     for a in accs:
         g = gene.get(a, a)
         p = prop_by.get(a, {})
@@ -393,6 +456,9 @@ def main():
         cols["dJ"].append(d[1])
         cols["dA"].append(d[2])
         cols["nXL"].append(len(xl.get(a, [])))
+        cols["upLoc"].append(";".join(up_loc[a]) or None)
+        cols["newLoc"].append(";".join(new_loc.get(a, [])) or None)
+        cols["nov"].append(nov.get(a, 0))
     dump(cols, OUT / "proteins.json")
     dump({"nodes": nodes, "acc": node_acc, "edges": edges}, OUT / "network_edges.json")
 
@@ -413,6 +479,7 @@ def main():
             "opencell": oc_loc.get(a),
             "hpa": hpa_loc.get(a),
             "seq": seqs.get(a),
+            "upTerms": up_terms[a],
         }
     if (OUT / "details").exists():
         shutil.rmtree(OUT / "details")
@@ -422,6 +489,17 @@ def main():
     dump(slim_recs, OUT / "slims.json")
     dump(records(contacts), OUT / "contacts.json")
     dump(records(tmprot), OUT / "topology.json")
+    # everything new in one file for the "New" page
+    loop_recs = [r for r in records(loops) if r["Agreement"] == "novel"
+                 or (r["Agreement"] == "conflict" and r.get("Credible Correction") == "Yes")]
+    dump({
+        "loc": [{"acc": a, "gene": gene.get(a, a), "loc": prop_by[a]["Organelle Localization"],
+                 "new": ";".join(nl), "uniprot": "; ".join(up_terms[a]),
+                 "cls": prop_by[a]["Localization Class"], "vote": prop_by[a]["Vote Fraction"]}
+                for a, nl in sorted(new_loc.items(), key=lambda x: gene.get(x[0], x[0]))],
+        "topo": loop_recs,
+        "contacts": [r for r in records(contacts) if r["In Database"] == "no"],
+    }, OUT / "new.json")
 
     # Complexes
     cx_meta = []
@@ -455,6 +533,15 @@ def main():
             "slimCandidates": len(slim), "slimProteins": int(slim["Motif Protein ID"].str.upper().nunique()),
             "contactCandidates": len(contacts),
             "coreInteractome": len(aug),
+            "newLoc": len(new_loc),
+            "newLocNoUniProt": sum(1 for a in new_loc if not up_loc[a] and not any(
+                term_class.get(x.strip().lower()) for tt in up_terms[a] for x in tt.split(","))),
+            "novelLoops": int((loops["Agreement"] == "novel").sum()),
+            "novelLoopProteins": int(loops.loc[loops["Agreement"] == "novel", "Protein ID"].nunique()),
+            "corrections": len([r for r in loop_recs if r["Agreement"] == "conflict"]),
+            "correctionProteins": len({r["Protein ID"] for r in loop_recs if r["Agreement"] == "conflict"}),
+            "newContacts": int((contacts["In Database"] == "no").sum()),
+            "newProteins": sum(1 for v in nov.values() if v),
             "hekAugmented": len(aug_hek),
         },
         "augSourcesHEK": aug_hek.iloc[:, 2].value_counts().to_dict(),
@@ -465,6 +552,7 @@ def main():
         "organelleColors": ORGANELLE_COLORS,
         "organelleLabels": ORGANELLE_LABELS,
         "sourceBits": SRC,
+        "novBits": NOV,
         "nShards": N_SHARDS,
         "complexes": cx_meta,
         "reference": reference,
