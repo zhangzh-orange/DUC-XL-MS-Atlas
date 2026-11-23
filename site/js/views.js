@@ -73,9 +73,10 @@
       </section>
 
       <section class="card" style="margin-bottom:16px">
-        <h2>Not another protein-interaction list</h2>
-        <div class="card-sub">What each kind of resource tells you about an interaction</div>
-        <div class="tbl-wrap"><table class="cmp">
+        <h2>How DUC-XL-MS complements existing interactome resources</h2>
+        <div class="card-sub">What each type of resource reports about a protein–protein interaction</div>
+        <div class="cmp-wrap"><table class="cmp">
+          <colgroup><col style="width:19%"><col style="width:27%"><col style="width:27%"><col style="width:27%"></colgroup>
           <thead><tr><th></th><th>AP-MS interactomes<br><span class="small">BioPlex, OpenCell</span></th><th>Association databases<br><span class="small">STRING</span></th><th class="us">DUC-XL-MS Atlas<br><span class="small">this study</span></th></tr></thead>
           <tbody>
             <tr><th scope="row">What is measured</th><td>Proteins that co-purify with a tagged bait</td><td>Scores combining experiments, curated pathways, co-expression and text mining</td><td class="us">Chemical cross-links between two residues, read out by MS</td></tr>
