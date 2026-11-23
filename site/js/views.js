@@ -91,7 +91,7 @@
       <section class="grid g4 new-tiles" style="margin-bottom:16px">
         <a class="card stat" href="#/new?s=loc"><div class="v num">${fmt(c.newLoc)}</div><div class="l">proteins with a localization not in UniProt <span class="nb">NEW</span></div><div class="s">propagated label vs UniProt CC · ${fmt(c.newLocNoUniProt)} had no UniProt organelle</div></a>
         <a class="card stat" href="#/new?s=topo"><div class="v num">${fmt(c.novelLoops)}</div><div class="l">membrane-loop sides not in UniProt <span class="nb">NEW</span></div><div class="s">in ${fmt(c.novelLoopProteins)} proteins · ${fmt(c.corrections)} credible corrections</div></a>
-        <a class="card stat" href="#/new?s=slim"><div class="v num">${fmt(c.slimCandidates)}</div><div class="l">candidate short linear motifs <span class="nb">CANDIDATE</span></div><div class="s">in ${fmt(c.slimProteins)} proteins, from cross-link-guided AF3</div></a>
+        <a class="card stat" href="#/new?s=slim"><div class="v num">${fmt(c.slimCandidates)}</div><div class="l">candidate short linear motifs <span class="nb">NEW</span></div><div class="s">in ${fmt(c.slimProteins)} proteins, from cross-link-guided AF3</div></a>
         <a class="card stat" href="#/new?s=contact"><div class="v num">${fmt(c.newContacts)}</div><div class="l">contact-site candidates not in databases <span class="nb">NEW</span></div><div class="s">of ${fmt(c.contactCandidates)} candidates</div></a>
       </section>
 
@@ -277,7 +277,7 @@
         <div class="card-sub">HEK293 / Jurkat: directly cross-linked in DUC-XL-MS (residue pairs from Table S1). "… augmented": not a cited interaction — reported by that database and added by our triadic-closure rule because both proteins share at least one DUC-XL-MS neighbour (listed in the last column; Table S5).</div>
         <div id="int-tbl"></div>
       </section>
-      ${det?.slims?.length ? `<section class="card has-new" style="margin-bottom:16px" id="sec-slim"><h2>Candidate short linear motifs ${App.newBadge("CANDIDATE", "Predicted by the cross-link-guided AF3 screen of this study; some match known ELM motif classes")}</h2><div class="card-sub">AlphaFold3 SLiM screen of cross-link-supported PPIs (Table S4)</div><div id="slim-tbl"></div></section>` : ""}
+      ${det?.slims?.length ? `<section class="card has-new" style="margin-bottom:16px" id="sec-slim"><h2>Candidate short linear motifs ${App.newBadge("NEW", "Predicted by the cross-link-guided AF3 screen of this study")}</h2><div class="card-sub">AlphaFold3 SLiM screen of cross-link-supported PPIs (Table S4)</div><div id="slim-tbl"></div></section>` : ""}
       ${footer()}`;
 
     App.bindTips(el);
@@ -339,7 +339,7 @@
       <div class="page-head"><div class="eyebrow" style="color:var(--new-ink)">★ New findings</div><h1>What DUC-XL-MS adds</h1>
         <p>Findings of this study beyond UniProt and the reference databases, in one place: new membrane-loop sides and credible topology corrections (Table S3), contact-site candidates not in CORUM or MCS databases (Table S3), candidate SLiMs (Table S4), and localizations that UniProt does not list (this atlas: propagated labels of Table S3 compared with the UniProt annotation). Each entry links to the protein page, where the new finding is highlighted next to the residue-level evidence behind it.</p></div>
       <section class="grid g4 new-tiles" style="margin-bottom:16px">${secs.map(([k, l, n, u]) =>
-        `<a class="card stat" href="#/new?s=${k}" data-sec="${k}"><div class="v num">${fmt(n)}</div><div class="l">${l} <span class="nb">${k === "slim" ? "CANDIDATE" : "NEW"}</span></div><div class="s">${u}</div></a>`).join("")}</section>
+        `<a class="card stat" href="#/new?s=${k}" data-sec="${k}"><div class="v num">${fmt(n)}</div><div class="l">${l} <span class="nb">NEW</span></div><div class="s">${u}</div></a>`).join("")}</section>
       <section class="card has-new" id="new-loc" style="margin-bottom:16px">
         <h2>New organelle localizations</h2>
         <div class="card-sub">Proteins confidently placed by DUC-XL-MS label propagation (Table S3) in a compartment that their UniProt subcellular location does not list (UniProt terms mapped to compartments with the term table of Table S2). ${fmt(c.newLocNoUniProt)} of them had no UniProt organelle annotation at all.</div>
