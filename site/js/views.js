@@ -982,8 +982,6 @@
             Cheng, Jiale and Natalia, Vini and Soykan, Tolga and Haucke, Volker and Liu, Fan},
   year   = {2026}
 }</pre></div>
-        <div class="card"><h2>Related resources</h2>
-          <p><a href="https://opencell.sf.czbiohub.org/" target="_blank" rel="noopener">OpenCell ↗</a> · <a href="https://endomap.hms.harvard.edu/network" target="_blank" rel="noopener">EndoMAP ↗</a> · <a href="https://bioplex.hms.harvard.edu/" target="_blank" rel="noopener">BioPlex ↗</a> · <a href="http://elm.eu.org/" target="_blank" rel="noopener">ELM ↗</a></p></div>
       </section>${footer()}`;
   };
 })();
