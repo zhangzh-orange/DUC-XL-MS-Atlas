@@ -172,14 +172,13 @@ const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; 
 function crc32(s) { let c = 0xffffffff; for (const b of new TextEncoder().encode(s)) c = CRC_T[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
 
 /* ── sortable / filterable table ───────────────────────────────────────── */
-/* cols: [{key, label, num, render(row)->html, text(row)->string for search/CSV}] */
+/* cols: [{key, label, num, render(row)->html, text(row)->string for search}] */
 App.table = function (host, rows, cols, opts = {}) {
   const st = { q: "", sort: opts.sort ?? null, dir: opts.dir ?? -1, limit: opts.limit ?? 500, filter: null };
   host.innerHTML = `
     <div class="tbl-tools">
       <input type="search" placeholder="${esc(opts.placeholder || "Filter rows…")}" aria-label="Filter table">
       ${opts.tools || ""}
-      <button class="btn small" data-csv>Export CSV</button>
     </div>
     <div class="tbl-wrap"><table><thead><tr>${cols.map((c, i) =>
       `<th data-i="${i}" class="${c.num ? "num" : ""}">${esc(c.label)}</th>`).join("")}</tr></thead><tbody></tbody></table></div>
@@ -204,20 +203,13 @@ App.table = function (host, rows, cols, opts = {}) {
       `<td class="${c.num ? "num" : ""}${c.wrap ? " wrap" : ""}">${c.render ? c.render(r) : esc(fmt(val(r, c)))}</td>`).join("")}</tr>`).join("");
     $$("th", host).forEach((th, i) => { th.classList.toggle("sorted", i === st.sort); th.dataset.dir = st.dir > 0 ? "↑" : "↓"; });
     $("[data-count]", host).textContent = view.length > st.limit
-      ? `Showing ${st.limit.toLocaleString()} of ${view.length.toLocaleString()} rows — refine the filter or export CSV`
+      ? `Showing ${st.limit.toLocaleString()} of ${view.length.toLocaleString()} rows — refine the filter`
       : `${view.length.toLocaleString()} rows`;
   }
   q.addEventListener("input", () => { st.q = q.value; draw(); });
   $$("th", host).forEach((th) => th.addEventListener("click", () => {
     const i = +th.dataset.i; st.dir = st.sort === i ? -st.dir : cols[i].num ? -1 : 1; st.sort = i; draw();
   }));
-  $("[data-csv]", host).addEventListener("click", () => {
-    const lines = [cols.map((c) => c.label), ...view.map((r) => cols.map((c) => txt(r, c) ?? ""))]
-      .map((l) => l.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
-    a.download = (opts.name || "table") + ".csv"; a.click(); URL.revokeObjectURL(a.href);
-  });
   draw();
   return { setFilter(f) { st.filter = f; draw(); }, redraw: draw, host };
 };

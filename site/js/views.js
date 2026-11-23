@@ -956,14 +956,13 @@
         <div class="card"><h2>Study</h2>
           <p><b>Site-resolved spatial and structural interactome of a human cell.</b><br>Zehong Zhang, Nanako Yokoyama, Ying Zhu, Julia Ruta, Jiale Cheng, Vini Natalia, Tolga Soykan, Volker Haucke, Fan Liu. Leibniz-Forschungsinstitut für Molekulare Pharmakologie (FMP), Berlin. Correspondence: Fan Liu.</p>
 </div>
-        <div class="card"><h2>Data shown</h2>
-          <dl class="kv">
-            <dt>Table S1</dt><dd>Cross-linked residue pairs and PPIs (HEK293, Jurkat; 1% FDR, residue-pair level)</dd>
-            <dt>Table S2</dt><dd>Organelle and topology markers with manual curation</dd>
-            <dt>Table S3</dt><dd>Localization propagation, membrane-loop topology, contact-site candidates</dd>
-            <dt>Table S4</dt><dd>AlphaFold3 short-linear-motif candidates</dd>
-            <dt>Table S5</dt><dd>Triadic-closure augmented core interactome</dd>
-            <dt>Models</dt><dd>CORVET, HOPS, exocyst and WASH assemblies with cross-link distances (40 Å Cα–Cα)</dd>
+        <div class="card"><h2>Data download</h2>
+          <dl class="kv dl-list">
+            <dt><a href="downloads/DUC-XL-MS_crosslinks_and_PPIs.xlsx" download>Cross-links and PPIs ↓</a></dt><dd>Residue-pair cross-links and protein–protein interactions, HEK293 and Jurkat (1% FDR) · 12 MB</dd>
+            <dt><a href="downloads/DUC-XL-MS_organelle_topology_markers.xlsx" download>Organelle and topology markers ↓</a></dt><dd>Curated marker proteins used for localization and topology · 1.1 MB</dd>
+            <dt><a href="downloads/DUC-XL-MS_localization_topology_contacts.xlsx" download>Localization, topology, contact sites ↓</a></dt><dd>Propagated localization, membrane-loop topology and contact-site candidates · 0.2 MB</dd>
+            <dt><a href="downloads/DUC-XL-MS_SLiM_candidates.xlsx" download>SLiM candidates ↓</a></dt><dd>AlphaFold3 short-linear-motif candidates · 0.1 MB</dd>
+            <dt><a href="downloads/DUC-XL-MS_augmented_core_interactome.xlsx" download>Augmented core interactome ↓</a></dt><dd>Core interactome with triadic-closure augmented edges · 1.0 MB</dd>
           </dl></div>
         <div class="card"><h2>Reading the views</h2>
           <ul style="padding-left:18px;margin:0;color:var(--ink-2)">
