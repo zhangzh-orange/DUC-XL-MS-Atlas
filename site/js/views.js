@@ -72,20 +72,38 @@
         </div>
       </section>
 
+      <section class="card method" style="margin-bottom:16px">
+        <h2><span><span class="kicker">Method</span><br>One cross-linking experiment, five readouts</span></h2>
+        <div class="card-sub">DUC-XL-MS combines gentle cell lysis, cross-linking and differential ultracentrifugation (DUC), so that a single dataset reports interactions with their binding sites together with where the proteins are.</div>
+        <ol class="steps">
+          <li><b>Cross-link before purifying</b><span>Cells are lysed gently and the cleared lysate is cross-linked with the enrichable, MS-cleavable Azide-A-DSBSO, keeping weak and transient organellar contacts that affinity purification loses.</span></li>
+          <li><b>Separate organelles by DUC</b><span>Differential ultracentrifugation splits the cross-linked material into nine pellet fractions and the cytosol; organelles stay as well separated as without cross-linking.</span></li>
+          <li><b>Read out residue pairs</b><span>Cross-linked peptides are enriched and identified at 1% residue-pair FDR: ${fmt(c.residuePairs.HEK293)} residue pairs in HEK293, ~9-fold more PPIs than the largest published XL-MS interactomes.</span></li>
+        </ol>
+        <div class="readouts">
+          <a href="#/protein/${exAcc}"><b>Binding interfaces</b><span>${fmt(c.interPPIs.HEK293)} direct PPIs with sites on both proteins</span></a>
+          <a href="#/organelles"><b>Localization</b><span>${fmt(c.annotatedProteins)} proteins in 8 compartments</span></a>
+          <a href="#/topology"><b>Membrane topology</b><span>${fmt(c.loops)} loop sides: the cross-linker is shorter than a membrane is thick</span></a>
+          <a href="#/contacts"><b>Contact sites</b><span>${fmt(c.contactCandidates)} inter-organelle candidates</span></a>
+          <a href="#/slims"><b>Structure</b><span>${fmt(c.slimCandidates)} SLiMs and 4 complex models from cross-link restraints</span></a>
+        </div>
+      </section>
+
       <section class="card" style="margin-bottom:16px">
         <h2>How DUC-XL-MS complements existing interactome resources</h2>
         <div class="card-sub">What each type of resource reports about a protein–protein interaction</div>
         <div class="cmp-wrap"><table class="cmp">
-          <colgroup><col style="width:19%"><col style="width:27%"><col style="width:27%"><col style="width:27%"></colgroup>
-          <thead><tr><th></th><th>AP-MS interactomes<br><span class="small"><a href="https://bioplex.hms.harvard.edu/" target="_blank" rel="noopener">BioPlex ↗</a>, <a href="https://opencell.czbiohub.org/" target="_blank" rel="noopener">OpenCell ↗</a></span></th><th>Association databases<br><span class="small"><a href="https://string-db.org/" target="_blank" rel="noopener">STRING ↗</a></span></th><th class="us">DUC-XL-MS Atlas<br><span class="small">this study</span></th></tr></thead>
+          <colgroup><col style="width:16%"><col style="width:21%"><col style="width:21%"><col style="width:21%"><col style="width:21%"></colgroup>
+          <thead><tr><th></th><th>AP-MS interactomes<br><span class="small"><a href="https://bioplex.hms.harvard.edu/" target="_blank" rel="noopener">BioPlex ↗</a>, <a href="https://opencell.czbiohub.org/" target="_blank" rel="noopener">OpenCell ↗</a></span></th><th>Association databases<br><span class="small"><a href="https://string-db.org/" target="_blank" rel="noopener">STRING ↗</a></span></th><th>Other XL-MS interactomes<br><span class="small"><a href="https://endomap.hms.harvard.edu/" target="_blank" rel="noopener">EndoMAP ↗</a>, <a href="https://doi.org/10.1073/pnas.2219418120" target="_blank" rel="noopener">Bartolec 2023 ↗</a>, <a href="https://doi.org/10.1038/s41592-024-02478-1" target="_blank" rel="noopener">Clasen 2024 ↗</a></span></th><th class="us">DUC-XL-MS Atlas<br><span class="small">this study</span></th></tr></thead>
           <tbody>
-            <tr><th scope="row">What is measured</th><td>Proteins that co-purify with a tagged bait</td><td>Scores combining experiments, curated pathways, co-expression and text mining</td><td class="us">Chemical cross-links between two residues, read out by MS</td></tr>
-            <tr><th scope="row">Direct contact?</th><td><span class="no">Not resolved</span> — direct and indirect complex members</td><td><span class="no">Not resolved</span> — functional association, not necessarily physical</td><td class="us"><span class="yes">Yes</span> — the two residues lie within cross-linker reach</td></tr>
-            <tr><th scope="row">Binding site</th><td><span class="no">—</span></td><td><span class="no">—</span></td><td class="us"><span class="yes">Residue on both proteins</span> for every link</td></tr>
-            <tr><th scope="row">Weak, transient organellar contacts</th><td>Often lost during lysis and purification</td><td>Only where previously reported</td><td class="us">Preserved: cross-linking of a mildly lysed whole-cell preparation</td></tr>
-            <tr><th scope="row">Same data also gives</th><td>OpenCell: localization by imaging</td><td>—</td><td class="us">Organelle localization, membrane side of loops, contact sites, structural restraints</td></tr>
+            <tr><th scope="row">What is measured</th><td>Proteins that co-purify with a tagged bait</td><td>Scores combining experiments, curated pathways, co-expression and text mining</td><td>Chemical cross-links, in affinity-enriched endosomes (EndoMAP) or in fractionated (Bartolec) or intact (Clasen) cells</td><td class="us">Chemical cross-links in a mildly lysed whole-cell preparation, then fractionated by differential ultracentrifugation</td></tr>
+            <tr><th scope="row">Direct contact?</th><td><span class="no">Not resolved</span> — direct and indirect complex members</td><td><span class="no">Not resolved</span> — functional association, not necessarily physical</td><td><span class="yes">Yes</span></td><td class="us"><span class="yes">Yes</span> — the two residues lie within cross-linker reach</td></tr>
+            <tr><th scope="row">Binding site</th><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="yes">Residue on both proteins</span></td><td class="us"><span class="yes">Residue on both proteins</span> for every link</td></tr>
+            <tr><th scope="row">Scale of the residue-level map</th><td><span class="no">—</span></td><td><span class="no">—</span></td><td>Whole-cell datasets: ~9-fold fewer PPIs than DUC-XL-MS (Fig. 1B); EndoMAP: endosomes</td><td class="us">${fmt(c.residuePairs.HEK293)} residue pairs, ${fmt(c.interPPIs.HEK293)} PPIs across ${fmt(c.proteinsCrosslinked)} proteins (HEK293)</td></tr>
+            <tr><th scope="row">Weak, transient organellar contacts</th><td>Often lost during lysis and purification</td><td>Only where previously reported</td><td>EndoMAP: cytosol-facing endosomal machinery partly lost during endosome enrichment</td><td class="us">Preserved: cross-linking before any purification</td></tr>
+            <tr><th scope="row">Same data also gives</th><td>OpenCell: localization by imaging</td><td>—</td><td>—</td><td class="us">Organelle localization, membrane side of loops, contact sites, structural restraints</td></tr>
           </tbody></table></div>
-        <p class="small muted" style="margin:10px 0 0">The approaches are complementary: they share a common core of PPIs, and AP-MS is more sensitive for low-abundance interactors. See <a href="#/systems">Systems</a> for the overlap and the augmented core interactome.</p>
+        <p class="small muted" style="margin:10px 0 0">The approaches are complementary: they share a common core of PPIs, PPI overlap between datasets is low even for the same method, and AP-MS is more sensitive for low-abundance interactors. See <a href="#/systems">Systems</a> for the overlap and the augmented core interactome.</p>
       </section>
 
       <section class="grid g4 new-tiles" style="margin-bottom:16px">
@@ -416,7 +434,7 @@
           <select id="net-org" style="width:100%"><option value="">All compartments</option>${App.meta.compartments.map((c) => `<option value="${c}">${esc(App.orgLabel(c))}</option>`).join("")}<option value="__none">Unassigned only</option></select>
           <div class="legend" style="flex-direction:column;gap:4px;margin-top:12px">${App.meta.compartments.map((c) => `<span><span class="dot" style="background:${App.orgColor(c)};margin-right:6px"></span>${esc(App.orgLabel(c))}</span>`).join("")}<span><span class="dot" style="background:var(--aug);margin-right:6px"></span>Unassigned</span></div>
         </div>
-        <div class="card net-canvas"><div id="sigma"></div><div class="net-count" id="net-count"></div><div class="net-hint">Scroll to zoom · drag to pan · click a node</div></div>
+        <div class="card net-canvas"><div id="sigma"></div><div class="net-count" id="net-count"></div><div class="net-hint">Scroll to zoom · drag to pan · click a node, then a partner or an edge to see the cross-linked residues</div></div>
         <div class="card net-panel" id="net-side"><p class="muted">Select a protein to see its partners.</p></div>
       </div>`;
 
@@ -428,11 +446,12 @@
     });
     net.edges.forEach((e, k) => { if (!G.hasEdge(e[0], e[1])) G.addEdgeWithKey(k, e[0], e[1], { mask: e[2], rp: Math.max(e[3], e[4]), size: 0.4 }); });
 
-    const st = { src: 31, rp: 0, org: "", sel: null, neigh: new Set(), q: null };
+    const st = { src: 31, rp: 0, org: "", sel: null, neigh: new Set(), q: null, edge: null };
     const edgeOk = (a) => (a.mask & st.src) && (!App.isOriginal(a.mask) || a.rp >= st.rp || !(a.mask & 3));
     const nodeOk = (n, a) => !st.org || (st.org === "__none" ? !a.loc.length : a.loc.includes(st.org));
     const renderer = new Sigma(G, $("#sigma"), {
       labelRenderedSizeThreshold: 7, labelColor: { color: App.cssVar("--ink") }, defaultEdgeColor: App.cssVar("--net-edge"), zIndex: true,
+      enableEdgeEvents: true, enableEdgeClickEvents: true, enableEdgeHoverEvents: true,
       nodeReducer: (n, a) => {
         const r = { ...a };
         if (!nodeOk(n, a)) { r.hidden = true; return r; }
@@ -449,6 +468,7 @@
         const [s, t] = G.extremities(k);
         if (!edgeOk(a) || !nodeOk(s, G.getNodeAttributes(s)) || !nodeOk(t, G.getNodeAttributes(t))) { r.hidden = true; return r; }
         if (!App.isOriginal(a.mask)) r.color = App.cssVar("--aug");
+        if (k === st.edge) { r.size = 3.5; r.color = App.cssVar("--accent"); r.zIndex = 2; r.hidden = false; return r; }
         if (st.sel != null) {
           if (+s === st.sel || +t === st.sel) { r.size = 1.2; r.color = App.isOriginal(a.mask) ? App.cssVar("--ink-2") : App.cssVar("--aug"); r.zIndex = 1; }
           else r.hidden = true;
@@ -463,7 +483,7 @@
     const refresh = () => { renderer.refresh(); count(); };
     function select(i, zoom) {
       if (i != null && !nodeOk(i, G.getNodeAttributes(i))) { st.org = ""; $("#net-org").value = ""; }
-      st.sel = i; st.neigh = new Set();
+      st.sel = i; st.neigh = new Set(); st.edge = null;
       if (i == null) { $("#net-side").innerHTML = `<p class="muted">Select a protein to see its partners.</p>`; refresh(); return; }
       G.forEachEdge(i, (k, a, s, t) => { if (edgeOk(a)) st.neigh.add(+s === i ? +t : +s); });
       const a = G.getNodeAttributes(i), acc = net.acc[i];
@@ -476,14 +496,59 @@
         <div class="chips" style="margin-bottom:10px">${App.orgChips(a.loc.join(";"))}</div>
         ${acc && App.idx.byAcc.has(acc) ? `<a class="btn small primary" href="#/protein/${esc(acc)}">Open protein page →</a>` : ""}
         <h3 style="margin-top:14px">${partners.length} partners shown</h3>
+        <div class="small muted" style="margin:-4px 0 6px">Click a partner to see the cross-linked residues.</div>
         <div style="display:flex;flex-direction:column;gap:3px;font-size:13px">${partners.slice(0, 150).map((p) => `<a href="javascript:void 0" data-n="${p.o}" style="display:flex;justify-content:space-between;gap:6px"><span>${esc(p.gene)}</span><span>${App.srcBadges(p.mask)}${p.rp ? `<span class="muted num"> ${p.rp}</span>` : ""}</span></a>`).join("")}</div>`;
-      $$("#net-side [data-n]").forEach((l) => (l.onclick = () => select(+l.dataset.n, true)));
+      $$("#net-side [data-n]").forEach((l) => (l.onclick = () => showEdge(i, +l.dataset.n)));
       refresh();
       if (zoom) {
         const d = renderer.getNodeDisplayData(i);
         if (d) renderer.getCamera().animate({ x: d.x, y: d.y, ratio: 0.25 }, { duration: 500 });
       }
     }
+    // residue pairs behind one edge: both sequences as bars, each cross-link as a line between its two lysines
+    async function showEdge(i, o) {
+      const k = G.edge(i, o); if (k == null) return;
+      if (st.sel !== i && st.sel !== o) select(i);
+      st.edge = k; refresh();
+      const ea = G.getEdgeAttributes(k), A = net.acc[i], B = net.acc[o], gA = net.nodes[i], gB = net.nodes[o];
+      const side = $("#net-side");
+      const head = `<a href="javascript:void 0" id="edge-back" class="small">← ${esc(net.nodes[st.sel])} partners</a>
+        <div class="eyebrow" style="margin-top:8px">Interaction</div><h2 style="margin-bottom:4px">${esc(gA)} – ${esc(gB)}</h2>
+        <div style="margin-bottom:8px">${App.srcBadges(ea.mask)}</div>`;
+      const pageBtns = [[A, gA], [B, gB]].filter(([a]) => a && App.idx.byAcc.has(a))
+        .map(([a, g]) => `<a class="btn small" href="#/protein/${esc(a)}">Interface map of ${esc(g)} →</a>`).join(" ");
+      const wire = () => { const b = $("#edge-back"); if (b) b.onclick = () => select(st.sel); };
+      if (!App.isOriginal(ea.mask)) {
+        const e = net.edges[k];
+        side.innerHTML = head + `<p class="small">No residue-level evidence: this edge was added by triadic closure because ${esc(App.srcText(ea.mask))} reports it and both proteins share DUC-XL-MS neighbours${e?.[5] ? ` (${esc(e[5])})` : ""}.</p><div style="display:flex;flex-wrap:wrap;gap:6px">${pageBtns}</div>`;
+        return wire();
+      }
+      side.innerHTML = head + `<div class="loading">Loading residue pairs…</div>`; wire();
+      const det = A ? await App.details(A) : null;
+      if (st.edge !== k) return;
+      const pairs = (det?.xl || []).filter((x) => x[0] === B && x[3] & st.src & 3).sort((x, y) => x[1] - y[1]);
+      const LA = App.prot(A)?.len || Math.max(10, ...pairs.map((x) => x[1])), LB = App.prot(B)?.len || Math.max(10, ...pairs.map((x) => x[2]));
+      const W = 300, x0 = 8, x1 = W - 8, Xa = (r) => x0 + ((r - 0.5) / LA) * (x1 - x0), Xb = (r) => x0 + ((r - 0.5) / LB) * (x1 - x0);
+      let s = `<text x="${x0}" y="12" font-size="11" font-weight="700" style="fill:var(--ink)">${esc(gA)}</text><text x="${x1}" y="12" font-size="10" text-anchor="end" style="fill:var(--muted)">1–${LA}</text>
+        <rect x="${x0}" y="20" width="${x1 - x0}" height="6" rx="3" fill="var(--border)"/>
+        <rect x="${x0}" y="104" width="${x1 - x0}" height="6" rx="3" fill="var(--border)"/>
+        <text x="${x0}" y="126" font-size="11" font-weight="700" style="fill:var(--ink)">${esc(gB)}</text><text x="${x1}" y="126" font-size="10" text-anchor="end" style="fill:var(--muted)">1–${LB}</text>`;
+      for (const x of pairs) {
+        const tip = `${esc(gA)} <b>K${x[1]}</b> ↔ ${esc(gB)} <b>K${x[2]}</b><br>${viz.CELL_LABELS[x[3]]}`;
+        s += `<line x1="${Xa(x[1])}" y1="26" x2="${Xb(x[2])}" y2="104" stroke="${viz.CELL_COLORS[x[3]]}" stroke-width="1.6" stroke-opacity=".8" data-tip="${tip}"/>
+          <circle cx="${Xa(x[1])}" cy="23" r="3.5" fill="${viz.CELL_COLORS[x[3]]}" data-tip="${tip}"/><circle cx="${Xb(x[2])}" cy="107" r="3.5" fill="${viz.CELL_COLORS[x[3]]}" data-tip="${tip}"/>`;
+      }
+      side.innerHTML = head + `<h3>${fmt(pairs.length)} cross-linked residue pair${pairs.length === 1 ? "" : "s"}</h3>
+        <svg viewBox="0 0 ${W} 134" width="100%" role="img">${s}</svg>
+        <div class="tbl-wrap" style="max-height:220px;margin:8px 0 10px"><table><thead><tr><th>${esc(gA)}</th><th>${esc(gB)}</th><th>Cell line</th></tr></thead><tbody>${
+          pairs.map((x) => `<tr><td class="mono">K${x[1]}</td><td class="mono">K${x[2]}</td><td>${viz.CELL_LABELS[x[3]]}</td></tr>`).join("")}</tbody></table></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">${pageBtns}</div>`;
+      wire();
+    }
+    App.bindTips($("#net-side"));
+    renderer.on("clickEdge", ({ edge }) => { const [s, t2] = G.extremities(edge); const a = +s, b = +t2; showEdge(st.sel === b ? b : a, st.sel === b ? a : b); });
+    renderer.on("enterEdge", () => { $("#sigma").style.cursor = "pointer"; });
+    renderer.on("leaveEdge", () => { $("#sigma").style.cursor = ""; });
     renderer.on("clickNode", ({ node }) => select(+node));
     renderer.on("clickStage", () => select(null));
     renderer.on("enterNode", ({ node }) => { $("#sigma").style.cursor = "pointer"; });
