@@ -73,19 +73,14 @@
       </section>
 
       <section class="card method" style="margin-bottom:16px">
-        <h2><span><span class="kicker">Method</span><br>One cross-linking experiment, five readouts</span></h2>
-        <div class="card-sub">DUC-XL-MS combines gentle cell lysis, cross-linking and differential ultracentrifugation (DUC), so that a single dataset reports interactions with their binding sites together with where the proteins are.</div>
-        <ol class="steps">
-          <li><b>Cross-link before purifying</b><span>Cells are lysed gently and the cleared lysate is cross-linked with the enrichable, MS-cleavable Azide-A-DSBSO, keeping weak and transient organellar contacts that affinity purification loses.</span></li>
-          <li><b>Separate organelles by DUC</b><span>Differential ultracentrifugation splits the cross-linked material into nine pellet fractions and the cytosol; organelles stay as well separated as without cross-linking.</span></li>
-          <li><b>Read out residue pairs</b><span>Cross-linked peptides are enriched and identified at 1% residue-pair FDR: ${fmt(c.residuePairs.HEK293)} residue pairs in HEK293, ~9-fold more PPIs than the largest published XL-MS interactomes.</span></li>
-        </ol>
+        <h2>One cross-linking experiment, five readouts</h2>
+        <div class="card-sub">The same residue-to-residue links report interactions with their binding sites, where proteins are, and how they are built.</div>
         <div class="readouts">
-          <a href="#/protein/${exAcc}"><b>Binding interfaces</b><span>${fmt(c.interPPIs.HEK293)} direct PPIs with sites on both proteins</span></a>
-          <a href="#/organelles"><b>Localization</b><span>${fmt(c.annotatedProteins)} proteins in 8 compartments</span></a>
-          <a href="#/topology"><b>Membrane topology</b><span>${fmt(c.loops)} loop sides: the cross-linker is shorter than a membrane is thick</span></a>
-          <a href="#/contacts"><b>Contact sites</b><span>${fmt(c.contactCandidates)} inter-organelle candidates</span></a>
-          <a href="#/slims"><b>Structure</b><span>${fmt(c.slimCandidates)} SLiMs and 4 complex models from cross-link restraints</span></a>
+          <a href="#/protein/${exAcc}"><span class="rv num">${fmt(c.interPPIs.HEK293)}</span><b>Binding interfaces</b><span>direct PPIs with the site on both proteins</span></a>
+          <a href="#/organelles"><span class="rv num">${fmt(c.annotatedProteins)}</span><b>Localization</b><span>proteins placed in 8 compartments</span></a>
+          <a href="#/topology"><span class="rv num">${fmt(c.loops)}</span><b>Membrane topology</b><span>loop sides in ${fmt(c.tmProteins)} TM proteins</span></a>
+          <a href="#/contacts"><span class="rv num">${fmt(c.contactCandidates)}</span><b>Contact sites</b><span>inter-organelle candidates</span></a>
+          <a href="#/slims"><span class="rv num">${fmt(c.slimCandidates)}</span><b>Structure</b><span>candidate SLiMs and 4 complex models</span></a>
         </div>
       </section>
 
