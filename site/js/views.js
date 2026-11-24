@@ -126,7 +126,7 @@
     const NEW_LABELS = [[N.loc, "localization"], [N.topo, "topology"], [N.correction, "topology correction"], [N.slim, "SLiM"], [N.contact, "contact site"]];
     const newText = (r) => NEW_LABELS.filter(([b]) => r.nov & b).map(([, l]) => l).join(", ");
     el.innerHTML = `
-      <div class="page-head"><div class="eyebrow">Binding interfaces</div><h1>Interface-resolved interactions</h1>
+      <div class="page-head"><div class="eyebrow">Binding interfaces</div><h1>Proteins with direct PPIs and binding interfaces</h1>
         <p>${fmt(rows.length)} proteins with at least one cross-link-resolved partner (${fmt(c.interPPIs.HEK293)} PPIs in HEK293). Click a protein to open its interface map: every partner with the cross-linked residue on both proteins.</p></div>
       <section class="card"><div id="prot-tbl"></div></section>${footer()}`;
     App.table($("#prot-tbl"), rows, [
