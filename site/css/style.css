@@ -113,7 +113,7 @@ main { max-width: 1320px; margin: 0 auto; padding: 24px; }
 .card-sub { color: var(--muted); font-size: 12.5px; margin: -2px 0 12px; }
 
 /* hero */
-.hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; align-items: center; margin-bottom: 26px; }
+.hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; align-items: center; margin-bottom: 36px; }
 .hero h1 { font-size: 34px; }
 .hero p.lead { font-size: 16px; color: var(--ink-2); margin: 8px 0 18px; }
 .hero-search { display: flex; gap: 8px; position: relative; }
@@ -311,5 +311,5 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--new-bd); }
 .ex-badge { display: inline-block; padding: 1px 8px; margin-right: 6px; border-radius: 999px; background: var(--ex-bg); color: var(--ex-ink);
   border: 1px solid var(--ex-bd); font-weight: 700; letter-spacing: .08em; }
 
-.home-h { font-size: 17px; margin: 8px 0 10px; display: flex; align-items: baseline; gap: 10px; }
+.home-h { font-size: 17px; margin: 0 0 14px; display: flex; align-items: baseline; gap: 10px; }
 .home-h a { font-weight: 500; }

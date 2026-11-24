@@ -71,7 +71,7 @@
         </div>
       </section>
 
-      <section class="card method" style="margin-bottom:16px">
+      <section class="card method" style="margin-bottom:30px">
         <h2>One cross-linking experiment, five readouts</h2>
         <div class="readouts">
           <a href="#/proteins"><span class="rv num">${fmt(c.interPPIs.HEK293)}</span><b>Binding interfaces</b><span>direct PPIs with the site on both proteins</span></a>
@@ -83,14 +83,14 @@
       </section>
 
       <h2 class="home-h">New beyond UniProt and existing databases <a class="small" href="#/new">see all →</a></h2>
-      <section class="grid g4 new-tiles" style="margin-bottom:16px">
+      <section class="grid g4 new-tiles" style="margin-bottom:30px">
         <a class="card stat" href="#/new?s=loc"><div class="v num">${fmt(c.newLoc)}</div><div class="l">new protein localizations <span class="nb">NEW</span></div></a>
         <a class="card stat" href="#/new?s=topo"><div class="v num">${fmt(c.novelLoops)}</div><div class="l">new membrane-loop sides <span class="nb">NEW</span></div></a>
         <a class="card stat" href="#/new?s=slim"><div class="v num">${fmt(c.slimCandidates)}</div><div class="l">candidate short linear motifs <span class="nb">NEW</span></div></a>
         <a class="card stat" href="#/new?s=contact"><div class="v num">${fmt(c.newContacts)}</div><div class="l">contact-site candidates not in databases <span class="nb">NEW</span></div></a>
       </section>
 
-      <section class="card" style="margin-bottom:16px">
+      <section class="card" style="margin-bottom:30px">
         <h2>How DUC-XL-MS complements existing interactome resources</h2>
         <div class="cmp-wrap"><table class="cmp">
           <colgroup><col style="width:14%"><col style="width:17%"><col style="width:17%"><col style="width:17%"><col style="width:17%"><col style="width:18%"></colgroup>
