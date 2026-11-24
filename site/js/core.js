@@ -246,6 +246,7 @@ App.routes = [
   [/^\/new(?:\?s=(\w+))?$/, "newFindings", "new"],
   [/^\/network(?:\/(.+))?$/, "network", "network"],
   [/^\/protein\/(.+)$/, "protein", ""],
+  [/^\/proteins$/, "proteins", "network"],
   [/^\/organelles$/, "organelles", "spatial"],
   [/^\/topology$/, "topology", "spatial"],
   [/^\/contacts$/, "contacts", "spatial"],

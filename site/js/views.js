@@ -75,7 +75,7 @@
       <section class="card method" style="margin-bottom:16px">
         <h2>One cross-linking experiment, five readouts</h2>
         <div class="readouts">
-          <a href="#/protein/${exAcc}"><span class="rv num">${fmt(c.interPPIs.HEK293)}</span><b>Binding interfaces</b><span>direct PPIs with the site on both proteins</span></a>
+          <a href="#/proteins"><span class="rv num">${fmt(c.interPPIs.HEK293)}</span><b>Binding interfaces</b><span>direct PPIs with the site on both proteins</span></a>
           <a href="#/organelles"><span class="rv num">${fmt(c.annotatedProteins)}</span><b>Localization</b><span>proteins placed in 8 compartments</span></a>
           <a href="#/topology"><span class="rv num">${fmt(c.loops)}</span><b>Membrane topology</b><span>loop sides in ${fmt(c.tmProteins)} TM proteins</span></a>
           <a href="#/contacts"><span class="rv num">${fmt(c.contactCandidates)}</span><b>Contact sites</b><span>inter-organelle candidates</span></a>
@@ -115,6 +115,32 @@
       const host = $("#hero-imap");
       if (host) viz.interfaceMap(host, exAcc, det, { len: App.prot(exAcc).len, max: 9, compact: true });
     }
+  };
+
+  /* ── interface-resolved proteins: list of every cross-linked protein ── */
+  views.proteins = async (el) => {
+    const P = App.P, N = App.NOV, c = App.meta.counts, rows = [];
+    P.acc.forEach((a, i) => {
+      if (!(P.dH[i] + P.dJ[i])) return;
+      rows.push({ acc: a, gene: P.gene[i], name: P.name[i], hek: P.dH[i], jur: P.dJ[i], nxl: P.nXL[i],
+        loc: P.loc[i], newLoc: P.newLoc[i], upLoc: P.upLoc[i], nov: P.nov[i] });
+    });
+    const NEW_LABELS = [[N.loc, "localization"], [N.topo, "topology"], [N.correction, "topology correction"], [N.slim, "SLiM"], [N.contact, "contact site"]];
+    const newText = (r) => NEW_LABELS.filter(([b]) => r.nov & b).map(([, l]) => l).join(", ");
+    el.innerHTML = `
+      <div class="page-head"><div class="eyebrow">Binding interfaces</div><h1>Interface-resolved interactions</h1>
+        <p>${fmt(rows.length)} proteins with at least one cross-link-resolved partner (${fmt(c.interPPIs.HEK293)} PPIs in HEK293). Click a protein to open its interface map: every partner with the cross-linked residue on both proteins.</p></div>
+      <section class="card"><div id="prot-tbl"></div></section>${footer()}`;
+    App.table($("#prot-tbl"), rows, [
+      { key: "gene", label: "Gene", render: (r) => App.protLink(r.acc, r.gene) },
+      { key: "acc", label: "UniProt", render: (r) => `<span class="mono">${esc(r.acc)}</span>` },
+      { key: "hek", label: "Partners HEK293", num: true },
+      { key: "jur", label: "Partners Jurkat", num: true },
+      { key: "nxl", label: "Cross-links", num: true },
+      { key: "loc", label: "Localization", value: (r) => App.locList(r.loc || r.upLoc).map(App.orgLabel).join("; "), render: (r) => App.locChips(r) },
+      { key: "nov", label: "New in this study", value: newText, render: (r) => newText(r) ? App.newBadge("NEW") + " " + esc(newText(r)) : "" },
+      { key: "name", label: "Protein name", wrap: true },
+    ], { sort: 2, limit: rows.length, name: "interface_resolved_proteins", placeholder: "Filter by gene, UniProt ID or name…" });
   };
 
   /* ── protein ──────────────────────────────────────────────────────────── */
