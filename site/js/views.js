@@ -50,7 +50,6 @@
     el.innerHTML = `
       <section class="hero">
         <div>
-          <div class="eyebrow">Interface-resolved interactome · HEK293 · Jurkat</div>
           <h1>Site-resolved spatial and structural interactome of a human cell</h1>
           <div class="hero-search">
             <input id="hero-q" type="search" placeholder="Search a gene or UniProt accession, e.g. LRBA" autocomplete="off" aria-label="Search protein">
