@@ -52,7 +52,6 @@
         <div>
           <div class="eyebrow">Interface-resolved interactome · HEK293 · Jurkat</div>
           <h1>Site-resolved spatial and structural interactome of a human cell</h1>
-          <p class="lead">Every cross-linked interaction comes with its binding site: the cross-linked residue on both proteins. ${fmt(c.residuePairs.HEK293)} residue-to-residue links resolve ${fmt(c.interPPIs.HEK293)} direct protein–protein interactions.</p>
           <div class="hero-search">
             <input id="hero-q" type="search" placeholder="Search a gene or UniProt accession, e.g. LRBA" autocomplete="off" aria-label="Search protein">
             <div id="hero-suggest" class="suggest" hidden></div>
