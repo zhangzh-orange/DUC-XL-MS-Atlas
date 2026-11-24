@@ -307,3 +307,6 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--new-bd); }
 /* "Example" marker on the home interface map: teal, distinct from accent blue and NEW gold */
 .ex-badge { display: inline-block; padding: 1px 8px; margin-right: 6px; border-radius: 999px; background: var(--ex-bg); color: var(--ex-ink);
   border: 1px solid var(--ex-bd); font-weight: 700; letter-spacing: .08em; }
+
+.home-h { font-size: 17px; margin: 8px 0 10px; display: flex; align-items: baseline; gap: 10px; }
+.home-h a { font-weight: 500; }

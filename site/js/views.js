@@ -52,14 +52,14 @@
         <div>
           <div class="eyebrow">Interface-resolved interactome · HEK293 · Jurkat</div>
           <h1>Site-resolved spatial and structural interactome of a human cell</h1>
-          <p class="lead">Every cross-linked interaction in this atlas comes with its contact site: the cross-linked lysine on each of the two proteins. ${fmt(c.residuePairs.HEK293)} residue-to-residue links resolve ${fmt(c.interPPIs.HEK293)} direct protein–protein interactions to the residue level, and the same links place proteins in organelles and orient membrane-protein loops.</p>
+          <p class="lead">Every cross-linked interaction comes with its binding site: the cross-linked residue on both proteins. ${fmt(c.residuePairs.HEK293)} residue-to-residue links resolve ${fmt(c.interPPIs.HEK293)} direct protein–protein interactions.</p>
           <div class="hero-search">
             <input id="hero-q" type="search" placeholder="Search a gene or UniProt accession, e.g. LRBA" autocomplete="off" aria-label="Search protein">
             <div id="hero-suggest" class="suggest" hidden></div>
             <button class="btn primary" id="hero-go">Search</button>
           </div>
           <div class="examples">Examples:
-            ${["LRBA", "STX7", "RAB7A", "RACK1", "ERH", "WASHC5", "ENTR1", "STT3B"].map((g) => {
+            ${["LRBA", "RAB7A", "RACK1", "WASHC5", "STT3B"].map((g) => {
               const a = App.resolve(g); return a ? `<a href="#/protein/${a}">${g}</a>` : "";
             }).join("")}
             · <a href="#/new"><b>★ All new findings</b></a>
@@ -68,13 +68,12 @@
         <div class="card hero-imap">
           <div class="eyebrow" style="color:var(--accent)"><span class="ex-badge">Example</span> interface map of ${HERO_EXAMPLE}</div>
           <div id="hero-imap"><div class="loading">Loading…</div></div>
-          <div class="cap">Each dot is a cross-linked lysine; each row is one partner. Hover a row to see which residue on ${HERO_EXAMPLE} links to which residue on the partner. <a href="#/protein/${exAcc}">Open ${HERO_EXAMPLE} →</a></div>
+          <div class="cap">Each row is one partner; hover a row to see which residues link. <a href="#/protein/${exAcc}">Open ${HERO_EXAMPLE} →</a></div>
         </div>
       </section>
 
       <section class="card method" style="margin-bottom:16px">
         <h2>One cross-linking experiment, five readouts</h2>
-        <div class="card-sub">The same residue-to-residue links report interactions with their binding sites, where proteins are, and how they are built.</div>
         <div class="readouts">
           <a href="#/protein/${exAcc}"><span class="rv num">${fmt(c.interPPIs.HEK293)}</span><b>Binding interfaces</b><span>direct PPIs with the site on both proteins</span></a>
           <a href="#/organelles"><span class="rv num">${fmt(c.annotatedProteins)}</span><b>Localization</b><span>proteins placed in 8 compartments</span></a>
@@ -84,49 +83,27 @@
         </div>
       </section>
 
+      <h2 class="home-h">New beyond UniProt and existing databases <a class="small" href="#/new">see all →</a></h2>
+      <section class="grid g4 new-tiles" style="margin-bottom:16px">
+        <a class="card stat" href="#/new?s=loc"><div class="v num">${fmt(c.newLoc)}</div><div class="l">new protein localizations <span class="nb">NEW</span></div></a>
+        <a class="card stat" href="#/new?s=topo"><div class="v num">${fmt(c.novelLoops)}</div><div class="l">new membrane-loop sides <span class="nb">NEW</span></div></a>
+        <a class="card stat" href="#/new?s=slim"><div class="v num">${fmt(c.slimCandidates)}</div><div class="l">candidate short linear motifs <span class="nb">NEW</span></div></a>
+        <a class="card stat" href="#/new?s=contact"><div class="v num">${fmt(c.newContacts)}</div><div class="l">contact-site candidates not in databases <span class="nb">NEW</span></div></a>
+      </section>
+
       <section class="card" style="margin-bottom:16px">
         <h2>How DUC-XL-MS complements existing interactome resources</h2>
-        <div class="card-sub">What each type of resource reports about a protein–protein interaction</div>
         <div class="cmp-wrap"><table class="cmp">
           <colgroup><col style="width:16%"><col style="width:21%"><col style="width:21%"><col style="width:21%"><col style="width:21%"></colgroup>
           <thead><tr><th></th><th>AP-MS interactomes<br><span class="small"><a href="https://bioplex.hms.harvard.edu/" target="_blank" rel="noopener">BioPlex ↗</a>, <a href="https://opencell.czbiohub.org/" target="_blank" rel="noopener">OpenCell ↗</a></span></th><th>Association databases<br><span class="small"><a href="https://string-db.org/" target="_blank" rel="noopener">STRING ↗</a></span></th><th>Other XL-MS interactomes<br><span class="small"><a href="https://endomap.hms.harvard.edu/" target="_blank" rel="noopener">EndoMAP ↗</a>, <a href="https://doi.org/10.1073/pnas.2219418120" target="_blank" rel="noopener">Bartolec 2023 ↗</a>, <a href="https://doi.org/10.1038/s41592-024-02478-1" target="_blank" rel="noopener">Clasen 2024 ↗</a></span></th><th class="us">DUC-XL-MS Atlas<br><span class="small">this study</span></th></tr></thead>
           <tbody>
-            <tr><th scope="row">What is measured</th><td>Proteins that co-purify with a tagged bait</td><td>Scores combining experiments, curated pathways, co-expression and text mining</td><td>Chemical cross-links, in affinity-enriched endosomes (EndoMAP) or in fractionated (Bartolec) or intact (Clasen) cells</td><td class="us">Chemical cross-links in a mildly lysed whole-cell preparation, then fractionated by differential ultracentrifugation</td></tr>
-            <tr><th scope="row">Direct contact?</th><td><span class="no">Not resolved</span> — direct and indirect complex members</td><td><span class="no">Not resolved</span> — functional association, not necessarily physical</td><td><span class="yes">Yes</span></td><td class="us"><span class="yes">Yes</span> — the two residues lie within cross-linker reach</td></tr>
-            <tr><th scope="row">Binding site</th><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="yes">Residue on both proteins</span></td><td class="us"><span class="yes">Residue on both proteins</span> for every link</td></tr>
-            <tr><th scope="row">Scale of the residue-level map</th><td><span class="no">—</span></td><td><span class="no">—</span></td><td>Whole-cell datasets: ~9-fold fewer PPIs than DUC-XL-MS; EndoMAP: endosomes</td><td class="us">${fmt(c.residuePairs.HEK293)} residue pairs, ${fmt(c.interPPIs.HEK293)} PPIs across ${fmt(c.proteinsCrosslinked)} proteins (HEK293)</td></tr>
-            <tr><th scope="row">Weak, transient organellar contacts</th><td>Often lost during lysis and purification</td><td>Only where previously reported</td><td>EndoMAP: cytosol-facing endosomal machinery partly lost during endosome enrichment</td><td class="us">Preserved: cross-linking before any purification</td></tr>
-            <tr><th scope="row">Same data also gives</th><td>OpenCell: localization by imaging</td><td>—</td><td>—</td><td class="us">Organelle localization, membrane side of loops, contact sites, structural restraints</td></tr>
+            <tr><th scope="row">Direct contact</th><td><span class="no">Not resolved</span></td><td><span class="no">Not resolved</span></td><td><span class="yes">Yes</span></td><td class="us"><span class="yes">Yes</span></td></tr>
+            <tr><th scope="row">Binding site</th><td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="yes">Residue on both proteins</span></td><td class="us"><span class="yes">Residue on both proteins</span></td></tr>
+            <tr><th scope="row">Scale</th><td>—</td><td>—</td><td>~9-fold fewer PPIs (whole cell); EndoMAP: endosomes</td><td class="us">${fmt(c.interPPIs.HEK293)} PPIs, ${fmt(c.proteinsCrosslinked)} proteins</td></tr>
+            <tr><th scope="row">Weak, transient contacts</th><td>Often lost during purification</td><td>Only if reported</td><td>EndoMAP: partly lost during enrichment</td><td class="us">Cross-linked before purification</td></tr>
+            <tr><th scope="row">Also gives</th><td>OpenCell: imaging localization</td><td>—</td><td>—</td><td class="us">Localization, topology, contact sites, structure</td></tr>
           </tbody></table></div>
-        <p class="small muted" style="margin:10px 0 0">The approaches are complementary: they share a common core of PPIs, PPI overlap between datasets is low even for the same method, and AP-MS is more sensitive for low-abundance interactors. See <a href="#/systems">Systems</a> for the overlap and the augmented core interactome.</p>
-      </section>
-
-      <section class="grid g4 new-tiles" style="margin-bottom:16px">
-        <a class="card stat" href="#/new?s=loc"><div class="v num">${fmt(c.newLoc)}</div><div class="l">proteins with a localization not in UniProt <span class="nb">NEW</span></div><div class="s">propagated label vs UniProt CC · ${fmt(c.newLocNoUniProt)} had no UniProt organelle</div></a>
-        <a class="card stat" href="#/new?s=topo"><div class="v num">${fmt(c.novelLoops)}</div><div class="l">membrane-loop sides not in UniProt <span class="nb">NEW</span></div><div class="s">in ${fmt(c.novelLoopProteins)} proteins · ${fmt(c.corrections)} credible corrections</div></a>
-        <a class="card stat" href="#/new?s=slim"><div class="v num">${fmt(c.slimCandidates)}</div><div class="l">candidate short linear motifs <span class="nb">NEW</span></div><div class="s">in ${fmt(c.slimProteins)} proteins, from cross-link-guided AF3</div></a>
-        <a class="card stat" href="#/new?s=contact"><div class="v num">${fmt(c.newContacts)}</div><div class="l">contact-site candidates not in databases <span class="nb">NEW</span></div><div class="s">of ${fmt(c.contactCandidates)} candidates</div></a>
-      </section>
-
-      <section class="grid g4" style="margin-bottom:16px">
-        ${stat(fmt(c.residuePairs.HEK293), "residue-to-residue links", `HEK293 · plus ${fmt(c.residuePairs.Jurkat)} in Jurkat`)}
-        ${stat(fmt(c.interPPIs.HEK293), "interface-resolved PPIs", `across ${fmt(c.proteinsCrosslinked)} proteins`)}
-        ${stat(fmt(c.annotatedProteins), "proteins localized", `from ${fmt(2001)} curated organelle markers`)}
-        ${stat(fmt(c.coreInteractome), "core interactome PPIs", "HEK293 + Jurkat, network-augmented")}
-      </section>
-      <section class="grid g3 pillars">
-        <a class="card" href="#/organelles" style="color:inherit;text-decoration:none">
-          <div class="eyebrow">Spatial</div><h2>Where proteins are</h2>
-          <ul><li>${fmt(c.annotatedProteins)} proteins across 8 compartments</li><li>${fmt(c.loops)} loop sides in ${fmt(c.tmProteins)} TM proteins</li><li>${fmt(c.contactCandidates)} contact-site candidates</li></ul>
-        </a>
-        <a class="card" href="#/slims" style="color:inherit;text-decoration:none">
-          <div class="eyebrow">Structural</div><h2>How they bind</h2>
-          <ul><li>${fmt(c.slimCandidates)} candidate SLiMs in ${fmt(c.slimProteins)} proteins</li><li>Cross-link-restrained models of CORVET, HOPS, exocyst and WASH</li></ul>
-        </a>
-        <a class="card" href="#/systems" style="color:inherit;text-decoration:none">
-          <div class="eyebrow">Systems</div><h2>How resources combine</h2>
-          <ul><li>Triadic-closure augmentation with BioPlex 3.0, OpenCell and EndoMAP</li><li>${fmt(c.coreInteractome)} PPIs in the spatiostructural core</li></ul>
-        </a>
+        <p class="small muted" style="margin:10px 0 0">Complementary approaches: AP-MS is more sensitive for low-abundance interactors. Overlap and the augmented core interactome: <a href="#/systems">Systems</a>.</p>
       </section>
       ${footer()}`;
     App.wireSearch($("#hero-q"), $("#hero-suggest"));
