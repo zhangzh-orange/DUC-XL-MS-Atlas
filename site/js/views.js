@@ -71,8 +71,8 @@
         </div>
       </section>
 
-      <section class="card method" style="margin-bottom:30px">
-        <h2>One cross-linking experiment, five readouts</h2>
+      <h2 class="home-h">One cross-linking experiment, five readouts</h2>
+      <section class="method" style="margin-bottom:30px">
         <div class="readouts">
           <a href="#/proteins"><span class="rv num">${fmt(c.interPPIs.HEK293)}</span><b>Binding interfaces</b><span>direct PPIs with the site on both proteins</span></a>
           <a href="#/organelles"><span class="rv num">${fmt(c.annotatedProteins)}</span><b>Localization</b><span>proteins placed in 8 compartments</span></a>
@@ -90,8 +90,8 @@
         <a class="card stat" href="#/new?s=contact"><div class="v num">${fmt(c.newContacts)}</div><div class="l">contact-site candidates not in databases <span class="nb">NEW</span></div></a>
       </section>
 
-      <section class="card" style="margin-bottom:30px">
-        <h2>How DUC-XL-MS complements existing interactome resources</h2>
+      <h2 class="home-h">How DUC-XL-MS complements existing interactome resources</h2>
+      <section style="margin-bottom:30px">
         <div class="cmp-wrap"><table class="cmp">
           <colgroup><col style="width:14%"><col style="width:17%"><col style="width:17%"><col style="width:17%"><col style="width:17%"><col style="width:18%"></colgroup>
           <thead><tr><th></th><th>AP-MS interactome<br><span class="small"><a href="https://bioplex.hms.harvard.edu/" target="_blank" rel="noopener">BioPlex ↗</a></span></th><th>AP-MS interactome<br><span class="small"><a href="https://opencell.czbiohub.org/" target="_blank" rel="noopener">OpenCell ↗</a></span></th><th>Association database<br><span class="small"><a href="https://string-db.org/" target="_blank" rel="noopener">STRING ↗</a></span></th><th>Endosome XL-MS interactome<br><span class="small"><a href="https://endomap.hms.harvard.edu/" target="_blank" rel="noopener">EndoMAP ↗</a></span></th><th class="us">DUC-XL-MS Atlas<br><span class="small">this study</span></th></tr></thead>
