@@ -79,7 +79,7 @@
           <a href="#/organelles"><span class="rv num">${fmt(c.annotatedProteins)}</span><b>Localization</b><span>proteins placed in 8 compartments</span></a>
           <a href="#/topology"><span class="rv num">${fmt(c.loops)}</span><b>Membrane topology</b><span>loop sides in ${fmt(c.tmProteins)} TM proteins</span></a>
           <a href="#/contacts"><span class="rv num">${fmt(c.contactCandidates)}</span><b>Contact sites</b><span>inter-organelle candidates</span></a>
-          <a href="#/slims"><span class="rv num">${fmt(c.slimCandidates)}</span><b>Structure</b><span>candidate SLiMs and a cross-link-guided complex structure prediction pipeline</span></a>
+          <a href="#/slims"><span class="rv num">${fmt(c.slimCandidates)}</span><b>Structure</b><span>candidate SLiMs and a complex structure pipeline</span></a>
         </div>
       </section>
 
