@@ -27,5 +27,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: site
+      # the uploaded artifact is sometimes not yet visible to deploy-pages; give it time to register
+      - run: sleep 30
       - id: deployment
         uses: actions/deploy-pages@v4
