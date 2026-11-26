@@ -349,3 +349,13 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--new-bd); }
 .howto summary { cursor: pointer; color: var(--accent); font-weight: 600; width: max-content; }
 .howto ul { margin: 6px 0 0; padding-left: 18px; }
 .howto li { margin: 2px 0; }
+
+/* network: back button and group list */
+.net-back { position: absolute; left: 12px; top: 10px; z-index: 2; max-width: calc(100% - 200px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grp-list { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.grp-list a { display: flex; align-items: center; gap: 8px; padding: 3px 4px; border-radius: 4px; color: var(--ink); text-decoration: none; }
+.grp-list a:hover { background: var(--surface-2); }
+.grp-list .g { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.grp-list .bar { width: 70px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; flex: none; }
+.grp-list .bar i { display: block; height: 100%; background: var(--accent); }
+.grp-list .n { color: var(--muted); font-size: 12px; flex: none; }

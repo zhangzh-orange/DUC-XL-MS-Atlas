@@ -6,10 +6,15 @@ from a spring layout, with edges weighted by the square root of their residue pa
 (augmented edges count as one), so tightly cross-linked assemblies gather into clusters.
 Small disconnected components (pairs, triplets, ...) are laid out one by one and placed
 on a ring around the main component.
-Writes data/processed/network_layout.json: [[x, y], ...] in node order.
+Louvain groups of the main component (on the same weights) are named after their three most
+connected proteins; the small components form one further group.
+Writes data/processed/network_layout.json: [[x, y], ...] in node order, and
+data/processed/network_groups.json: {"of": group per node, "groups": [...]}.
+`--groups-only` recomputes the groups on the existing layout (the layout takes minutes).
 """
 import json
 import math
+import sys
 from pathlib import Path
 
 import networkx as nx
@@ -19,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "processed"
 ITERATIONS = 600
 SEED = 1
+RESOLUTION = 1.5  # Louvain resolution
 
 
 def layout_main(g, nodes):
@@ -36,6 +42,27 @@ def layout_main(g, nodes):
     return {n: (p - c) / s for n, p in zip(nodes, xy)}
 
 
+def groups(g, comps, nodes, xy):
+    """Louvain groups of the main component plus one group of all small components."""
+    main_nodes = comps[0]
+    cs = sorted(nx.community.louvain_communities(g.subgraph(main_nodes), weight="weight", resolution=RESOLUTION, seed=SEED),
+                key=lambda c: (-len(c), min(c)))
+    members = [sorted(c) for c in cs] + [sorted(set().union(*comps[1:]))] if len(comps) > 1 else [sorted(c) for c in cs]
+    of = [0] * len(nodes)
+    out = []
+    for gi, m in enumerate(members):
+        for i in m:
+            of[i] = gi
+        small = gi == len(cs)
+        sub = g.subgraph(m)
+        top = sorted(m, key=lambda i: (-sub.degree(i, weight="weight"), nodes[i]))[:3]
+        pts = np.array([xy[i] for i in m])
+        out.append({"id": gi, "label": "Small separate groups" if small else " / ".join(nodes[i] for i in top),
+                    "kind": "s" if small else "c", "count": len(m), "ppis": sub.number_of_edges(),
+                    "x": round(float(np.median(pts[:, 0])), 4), "y": round(float(np.median(pts[:, 1])), 4)})
+    return {"of": of, "groups": out}
+
+
 def main():
     net = json.load(open(OUT / "network_edges.json"))
     n = len(net["nodes"])
@@ -47,6 +74,12 @@ def main():
     comps = sorted(nx.connected_components(g), key=lambda c: (-len(c), min(c)))
 
     main_nodes = sorted(comps[0])
+    if "--groups-only" in sys.argv:
+        old = json.load(open(OUT / "network_layout.json"))
+        res = groups(g, comps, net["nodes"], old)
+        json.dump(res, open(OUT / "network_groups.json", "w"), separators=(",", ":"))
+        print(f"{len(res['groups'])} groups written")
+        return
     pos = layout_main(g, main_nodes)
 
     # small components on a ring around the main component
@@ -64,8 +97,10 @@ def main():
     xy = np.array([pos[i] for i in range(n)])
     json.dump([[round(float(x), 4), round(float(y), 4)] for x, y in xy],
               open(OUT / "network_layout.json", "w"), separators=(",", ":"))
+    res = groups(g, comps, net["nodes"], xy.tolist())
+    json.dump(res, open(OUT / "network_groups.json", "w"), separators=(",", ":"))
     print(f"layout written for {n} nodes: main component {len(main_nodes)} (ForceAtlas2 LinLog), "
-          f"{len(small)} small components on a ring of radius {R:.2f}")
+          f"{len(small)} small components on a ring of radius {R:.2f}, {len(res['groups'])} groups")
 
 
 if __name__ == "__main__":

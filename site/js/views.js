@@ -455,14 +455,16 @@
   };
 
   /* ── network ──────────────────────────────────────────────────────────── */
-  // Three levels: the protein map; the subnetwork of a clicked protein (it, its partners and the
-  // links among them); the residue view (d3), where proteins can be drawn as sequence bars and
-  // cross-links run residue to residue.
+  // Levels: the whole map (Louvain groups, links between groups hidden by default); a group;
+  // the subnetwork of a clicked protein (it, its partners and the links among them); the residue
+  // view (d3), where proteins can be drawn as sequence bars and cross-links run residue to residue.
+  // "← back", Esc or a click on the background goes up one level.
   views.network = async (el, focusAcc) => {
-    const net = await App.network();
+    const [net, grp] = await Promise.all([App.network(), App.load("network_groups")]);
+    const groups = grp.groups, bigGroups = groups.filter((g) => g.kind === "c").sort((a, b) => b.count - a.count);
     el.innerHTML = `
       <div class="page-head"><div class="eyebrow">Systems</div><h1>Interactome network</h1>
-        <p>${fmt(net.edges.length)} PPIs among ${fmt(net.nodes.length)} proteins in the HEK293 + Jurkat core interactome in one ForceAtlas2 (LinLog) layout, where tightly cross-linked assemblies form clusters; colour marks the compartment. Filter by evidence and compartment; click a protein to reduce the map to its subnetwork, double-click it for the residue view.</p></div>
+        <p>${fmt(net.edges.length)} PPIs among ${fmt(net.nodes.length)} proteins in the HEK293 + Jurkat core interactome, in one ForceAtlas2 (LinLog) layout where tightly cross-linked assemblies form clusters; colour marks the compartment. The map opens on ${fmt(bigGroups.length)} groups of densely connected proteins: click a group to zoom in, a protein for its subnetwork, and double-click a protein for the residue view.</p></div>
       <div class="net-layout" id="net-layout">
         <div class="card net-panel">
           <h3>Find protein</h3>
@@ -470,11 +472,17 @@
           <h3>Edge evidence</h3>
           <div class="check-list" id="net-src">
             ${[[1, "DUC-XL-MS · HEK293"], [2, "DUC-XL-MS · Jurkat"], [4, "Augmented · BioPlex 3.0"], [8, "Augmented · OpenCell"], [16, "Augmented · EndoMAP"]]
-              .map(([b, l]) => `<label><input type="checkbox" value="${b}" checked> ${l}</label>`).join("")}
+              .map(([b, l]) => `<label><input type="checkbox" value="${b}"${b < 4 ? " checked" : ""}> ${l}</label>`).join("")}
           </div>
+          <div class="small muted">Augmented edges (no residue-level evidence) are off by default.</div>
           <h3>Minimum residue pairs</h3>
           <div class="range-row"><input type="range" id="net-rp" min="0" max="10" value="0"><span id="net-rp-v" class="num">0</span></div>
-          <div class="small muted">Applies to cross-linked edges (augmented edges have none).</div>
+          <div class="small muted">Applies to cross-linked edges.</div>
+          <h3>Display</h3>
+          <div class="check-list">
+            <label><input type="checkbox" id="net-glab" checked> group names</label>
+            <label><input type="checkbox" id="net-cross"> links between groups</label>
+          </div>
           <h3>Compartment</h3>
           <select id="net-org" style="width:100%"><option value="">All compartments</option>${App.meta.compartments.map((c) => `<option value="${c}">${esc(App.orgLabel(c))}</option>`).join("")}<option value="__none">Unassigned only</option></select>
           <div class="legend" style="flex-direction:column;gap:4px;margin-top:12px">${App.meta.compartments.map((c) => `<span><span class="dot" style="background:${App.orgColor(c)};margin-right:6px"></span>${esc(App.orgLabel(c))}</span>`).join("")}<span><span class="dot" style="background:var(--aug);margin-right:6px"></span>Unassigned</span></div>
@@ -483,83 +491,167 @@
           <div id="sigma"></div>
           <svg id="net-sub" hidden aria-label="Residue view of the selected subnetwork"></svg>
           <div class="net-subbar" id="net-subbar" hidden>
-            <button class="btn small" id="sub-back">← Network map</button><span class="muted" id="sub-info"></span>
+            <button class="btn small" id="sub-back">← Subnetwork</button><span class="muted" id="sub-info"></span>
             <label><input type="checkbox" id="sub-pp" checked> links among partners</label>
             <button class="btn small" id="sub-bars">All as bars</button><button class="btn small" id="sub-nodes">All as nodes</button>
             <span class="muted">double-click a protein to toggle its sequence bar · click a link for its residue pairs</span>
           </div>
+          <button class="btn small primary net-back" id="net-back" hidden></button>
           <div class="net-count" id="net-count"></div>
-          <div class="net-hint" id="net-hint">Scroll to zoom · click a protein for its subnetwork, double-click for the residue view · click an edge for the cross-linked residues · click the background to return</div>
+          <div class="net-hint" id="net-hint"></div>
           <button class="btn small net-fs" id="net-fs" title="Full screen (Esc to leave)">⛶ Full screen</button>
         </div>
-        <div class="card net-panel" id="net-side"><p class="muted">Select a protein to see its partners.</p></div>
+        <div class="card net-panel" id="net-side"></div>
       </div>`;
 
+    const HINT = "Scroll to zoom · hover a protein to see its partners · click a group or protein to zoom in · double-click a protein for the residue view · Esc or the background goes back";
+    $("#net-hint").textContent = HINT;
     const G = new graphology.Graph({ multi: false, type: "undirected" });
     const aug = App.cssVar("--aug") || "#a0a3aa";
     net.nodes.forEach((g, i) => {
       const loc = App.locList(App.nodeLoc(net, i));
-      G.addNode(i, { x: net.xy[i][0], y: net.xy[i][1], label: g, size: 1 + Math.min(5, Math.log2(net.adj[i].length + 1) * 0.55), color: loc[0] ? App.meta.organelleColors[loc[0]] : aug, loc });
+      G.addNode(i, { kind: "p", x: net.xy[i][0], y: net.xy[i][1], label: g, grp: grp.of[i], size: 0.8 + Math.min(4.5, Math.log2(net.adj[i].length + 1) * 0.5), color: loc[0] ? App.meta.organelleColors[loc[0]] : aug, loc });
     });
-    net.edges.forEach((e, k) => { if (!G.hasEdge(e[0], e[1])) G.addEdgeWithKey(k, e[0], e[1], { mask: e[2], rp: Math.max(e[3], e[4]), h: e[3], j: e[4], size: 0.4 }); });
+    net.edges.forEach((e, k) => {
+      if (G.hasEdge(e[0], e[1])) return;
+      const rp = Math.max(e[3], e[4]);
+      G.addEdgeWithKey(k, e[0], e[1], { mask: e[2], rp, h: e[3], j: e[4], cross: grp.of[e[0]] !== grp.of[e[1]], size: 0.25 + Math.min(1.2, Math.log2(rp + 1) * 0.18) });
+    });
+    // proteins that only have augmented edges are hidden while augmented edges are off
+    G.forEachEdge((k, a, s, t) => { if (App.isOriginal(a.mask)) { G.setNodeAttribute(s, "orig", true); G.setNodeAttribute(t, "orig", true); } });
+    // group names: one tiny label node per group of at least 15 proteins
+    bigGroups.filter((g) => g.count >= 15).forEach((g) => G.addNode("m:" + g.id, { kind: "m", gid: g.id, x: g.x, y: g.y, label: g.label, size: 0.1 }));
 
-    const st = { src: 31, rp: 0, org: "", sel: null, neigh: new Set(), q: null, edge: null };
+    const st = { src: 3, rp: 0, org: "", sel: null, neigh: new Set(), edge: null, grp: null, hover: null, hoverN: new Set(), cross: false, glab: true };
     const edgeOk = (a) => (a.mask & st.src) && (!App.isOriginal(a.mask) || a.rp >= st.rp || !(a.mask & 3));
     const nodeOk = (n, a) => !st.org || (st.org === "__none" ? !a.loc.length : a.loc.includes(st.org));
+    const baseOk = (k, a) => { const [s, t] = G.extremities(k); return edgeOk(a) && nodeOk(s, G.getNodeAttributes(s)) && nodeOk(t, G.getNodeAttributes(t)); };
+    const rgba = (hex, al) => { const h = String(hex).trim().replace("#", ""); if (h.length < 6) return hex; const v = parseInt(h.slice(0, 6), 16); return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${al})`; };
+    let C = {};
+    const palette = () => { C = { edge: rgba(App.cssVar("--net-edge"), 0.55), aug: rgba(aug, 0.35), ink2: App.cssVar("--ink-2"), dim: App.cssVar("--grid"), bg: App.cssVar("--surface"), accent: App.cssVar("--accent") }; };
+    palette();
     const renderer = new Sigma(G, $("#sigma"), {
-      labelRenderedSizeThreshold: 7, labelColor: { color: App.cssVar("--ink") }, defaultEdgeColor: App.cssVar("--net-edge"), zIndex: true,
+      labelRenderedSizeThreshold: 9, labelDensity: 0.08, labelColor: { color: App.cssVar("--ink") }, zIndex: true,
       enableEdgeEvents: true, enableEdgeClickEvents: true, enableEdgeHoverEvents: true,
       nodeReducer: (n, a) => {
         const r = { ...a };
-        if (!nodeOk(n, a)) { r.hidden = true; return r; }
+        if (a.kind === "m") {
+          r.hidden = !st.glab || st.sel != null || st.hover != null || (st.grp != null && st.grp !== a.gid);
+          r.forceLabel = true; r.color = C.bg; r.zIndex = 3;
+          return r;
+        }
+        if (!nodeOk(n, a) || (!a.orig && !(st.src & 28))) { r.hidden = true; return r; }
         if (st.sel != null) {
           // subnetwork: only the selected protein and its partners stay on the map
           if (+n === st.sel) { r.highlighted = true; r.zIndex = 2; r.size = a.size + 3; }
           else if (st.neigh.has(+n)) { r.zIndex = 1; r.forceLabel = st.neigh.size < 60; }
           else r.hidden = true;
-        }
+        } else if (st.hover != null) {
+          if (+n === st.hover) { r.highlighted = true; r.zIndex = 2; r.forceLabel = true; }
+          else if (st.hoverN.has(+n)) { r.zIndex = 1; r.forceLabel = st.hoverN.size <= 40; }
+          else { r.color = C.dim; r.label = ""; r.zIndex = 0; }
+        } else if (st.grp != null && a.grp !== st.grp) { r.color = C.dim; r.label = ""; r.zIndex = 0; }
         return r;
       },
       edgeReducer: (k, a) => {
         const r = { ...a };
-        const [s, t] = G.extremities(k);
-        if (!edgeOk(a) || !nodeOk(s, G.getNodeAttributes(s)) || !nodeOk(t, G.getNodeAttributes(t))) { r.hidden = true; return r; }
-        if (!App.isOriginal(a.mask)) r.color = App.cssVar("--aug");
-        if (k === st.edge) { r.size = 3.5; r.color = App.cssVar("--accent"); r.zIndex = 2; r.hidden = false; return r; }
+        if (!baseOk(k, a)) { r.hidden = true; return r; }
+        const [s, t] = G.extremities(k), orig = App.isOriginal(a.mask);
+        r.color = orig ? C.edge : C.aug;
+        if (k === st.edge) { r.size = 3.5; r.color = C.accent; r.zIndex = 2; return r; }
         if (st.sel != null) {
-          if (+s === st.sel || +t === st.sel) { r.size = 1.2; r.color = App.isOriginal(a.mask) ? App.cssVar("--ink-2") : App.cssVar("--aug"); r.zIndex = 1; }
-          else if (st.neigh.has(+s) && st.neigh.has(+t)) { r.size = 0.6; r.zIndex = 0; }   // links among partners
+          if (+s === st.sel || +t === st.sel) { r.size = Math.max(a.size, 1.2); r.color = orig ? C.ink2 : aug; r.zIndex = 1; }
+          else if (st.neigh.has(+s) && st.neigh.has(+t)) { r.zIndex = 0; }   // links among partners
           else r.hidden = true;
+          return r;
         }
+        if (st.hover != null) {
+          if (+s === st.hover || +t === st.hover) { r.size = Math.max(a.size, 0.9); r.color = orig ? C.ink2 : aug; r.zIndex = 1; }
+          else r.hidden = true;
+          return r;
+        }
+        if (a.cross && !st.cross) { r.hidden = true; return r; }
+        if (st.grp != null && G.getNodeAttribute(s, "grp") !== st.grp && G.getNodeAttribute(t, "grp") !== st.grp) r.hidden = true;
         return r;
       },
     });
     const count = () => {
-      let ne = 0; G.forEachEdge((k, a, s, t) => { if (edgeOk(a) && nodeOk(s, G.getNodeAttributes(s)) && nodeOk(t, G.getNodeAttributes(t))) ne++; });
-      $("#net-count").textContent = `${fmt(ne)} edges shown`;
+      let ne = 0; G.forEachEdge((k, a) => { if (baseOk(k, a) && (st.cross || !a.cross)) ne++; });
+      $("#net-count").textContent = `${fmt(ne)} edges shown${st.cross ? "" : " (links between groups hidden)"}`;
     };
-    const refresh = () => { renderer.refresh(); count(); subHighlight(); };
-    // fit the camera to the selected protein and its partners
-    function fitSel() {
-      if (st.sel == null) return;
+    const refresh = () => { renderer.refresh(); count(); subHighlight(); updateBack(); };
+    // fit the camera to a set of proteins
+    function fitNodes(list) {
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-      [st.sel, ...st.neigh].forEach((n) => { const d = renderer.getNodeDisplayData(n); if (!d) return; x0 = Math.min(x0, d.x); y0 = Math.min(y0, d.y); x1 = Math.max(x1, d.x); y1 = Math.max(y1, d.y); });
+      list.forEach((n) => { const d = renderer.getNodeDisplayData(n); if (!d) return; x0 = Math.min(x0, d.x); y0 = Math.min(y0, d.y); x1 = Math.max(x1, d.x); y1 = Math.max(y1, d.y); });
       if (!isFinite(x0)) return;
       renderer.getCamera().animate({ x: (x0 + x1) / 2, y: (y0 + y1) / 2, ratio: Math.min(1, Math.max(0.03, Math.max(x1 - x0, y1 - y0) * 1.3)) }, { duration: 500 });
     }
+    const groupMembers = (gid) => { const m = []; grp.of.forEach((g, i) => { if (g === gid) m.push(i); }); return m; };
+
+    // "back" goes up one level: residue view → subnetwork → group → whole network
+    function updateBack() {
+      const b = $("#net-back");
+      if (sub || (st.sel == null && st.grp == null)) { b.hidden = true; return; }
+      b.hidden = false;
+      b.textContent = st.sel != null && st.grp != null ? `← Group: ${groups[st.grp].label}` : "← Whole network";
+    }
+    function back() {
+      if (sub) return closeSub();
+      if (st.sel != null && st.grp != null) return selectGroup(st.grp);
+      if (st.sel != null || st.grp != null) return home();
+    }
+    function home() {
+      st.sel = null; st.neigh = new Set(); st.edge = null; st.grp = null;
+      const max = bigGroups[0]?.count || 1, small = groups.find((g) => g.kind === "s");
+      $("#net-side").innerHTML = `
+        <div class="eyebrow">Whole network</div>
+        <p class="small muted" style="margin:4px 0 10px">Groups of densely connected proteins (Louvain community detection), named after their three most connected proteins. Click a group to zoom to it; click a protein for its subnetwork.</p>
+        <h3>Groups by size</h3>
+        <div class="grp-list">${bigGroups.map((g) => `<a href="javascript:void 0" data-g="${g.id}"><span class="g">${esc(g.label)}</span><span class="bar"><i style="width:${Math.max(3, (100 * g.count) / max)}%"></i></span><span class="n num">${fmt(g.count)}</span></a>`).join("")}
+        ${small ? `<a href="javascript:void 0" data-g="${small.id}"><span class="g muted">${esc(small.label)}</span><span class="bar"><i style="width:${Math.max(3, (100 * small.count) / max)}%"></i></span><span class="n num">${fmt(small.count)}</span></a>` : ""}</div>`;
+      $$("#net-side [data-g]").forEach((l) => (l.onclick = () => selectGroup(+l.dataset.g)));
+      refresh(); renderer.getCamera().animatedReset({ duration: 400 });
+    }
+    function selectGroup(gid) {
+      st.sel = null; st.neigh = new Set(); st.edge = null; st.grp = gid;
+      const g = groups[gid], members = groupMembers(gid), inside = new Map(members.map((i) => [i, 0])), linked = new Map();
+      G.forEachEdge((k, a, s, t) => {
+        if (!edgeOk(a)) return;
+        const gs = grp.of[+s], gt = grp.of[+t];
+        if (gs === gid && gt === gid) { inside.set(+s, inside.get(+s) + 1); inside.set(+t, inside.get(+t) + 1); }
+        else if (gs === gid || gt === gid) { const o = gs === gid ? gt : gs; linked.set(o, (linked.get(o) || 0) + 1); }
+      });
+      const mem = [...inside.entries()].sort((x, y) => y[1] - x[1] || net.nodes[x[0]].localeCompare(net.nodes[y[0]]));
+      const lk = [...linked.entries()].sort((x, y) => y[1] - x[1]).slice(0, 15);
+      $("#net-side").innerHTML = `
+        <a href="javascript:void 0" class="small" id="g-home">← All groups</a>
+        <div class="eyebrow" style="margin-top:8px">Group</div><h2 style="margin-bottom:6px">${esc(g.label)}</h2>
+        <dl class="kv"><dt>Proteins</dt><dd>${fmt(g.count)}</dd><dt>PPIs inside</dt><dd>${fmt(g.ppis)}</dd><dt>Linked groups</dt><dd>${fmt(linked.size)}</dd></dl>
+        <h3 style="margin-top:14px">Proteins, most connected first</h3>
+        <div style="display:flex;flex-direction:column;gap:3px;font-size:13px">${mem.slice(0, 80).map(([i, d]) => `<a href="javascript:void 0" data-n="${i}" style="display:flex;justify-content:space-between;gap:6px"><span>${esc(net.nodes[i])}</span><span class="muted num">${d} in group</span></a>`).join("")}</div>
+        ${mem.length > 80 ? `<div class="small muted" style="margin-top:4px">${fmt(mem.length - 80)} more; search to find them</div>` : ""}
+        ${lk.length ? `<h3 style="margin-top:14px">PPIs to other groups</h3><div class="grp-list">${lk.map(([o, n]) => `<a href="javascript:void 0" data-g="${o}"><span class="g">${esc(groups[o].label)}</span><span class="n num">${fmt(n)}</span></a>`).join("")}</div>` : ""}`;
+      $("#g-home").onclick = home;
+      $$("#net-side [data-n]").forEach((l) => (l.onclick = () => select(+l.dataset.n, true)));
+      $$("#net-side [data-g]").forEach((l) => (l.onclick = () => selectGroup(+l.dataset.g)));
+      refresh(); fitNodes(members);
+    }
     function select(i, fit) {
-      if (i != null && !nodeOk(i, G.getNodeAttributes(i))) { st.org = ""; $("#net-org").value = ""; }
-      st.sel = i; st.neigh = new Set(); st.edge = null;
-      if (i == null) { $("#net-side").innerHTML = `<p class="muted">Select a protein to see its partners.</p>`; refresh(); return; }
+      if (i == null) return home();
+      if (!nodeOk(i, G.getNodeAttributes(i))) { st.org = ""; $("#net-org").value = ""; }
+      st.sel = i; st.neigh = new Set(); st.edge = null; st.hover = null;
       G.forEachEdge(i, (k, a, s, t) => { if (edgeOk(a)) st.neigh.add(+s === i ? +t : +s); });
-      const a = G.getNodeAttributes(i), acc = net.acc[i];
+      const a = G.getNodeAttributes(i), acc = net.acc[i], gi = groups[a.grp];
       const partners = [...st.neigh].map((o) => {
         const k = G.edge(i, o), ea = G.getEdgeAttributes(k);
         return { o, gene: net.nodes[o], mask: ea.mask, rp: ea.rp };
       }).sort((x, y) => y.rp - x.rp || x.gene.localeCompare(y.gene));
       const subBtn = sub && sub.center === i ? "" : `<button class="btn small primary" id="net-open-sub">${sub ? "Centre residue view here" : "Open residue view →"}</button>`;
       $("#net-side").innerHTML = `
-        <div class="eyebrow">Selected</div><h2 style="margin-bottom:4px">${esc(a.label)}</h2>
+        <a href="javascript:void 0" class="small" id="p-back">${st.grp != null ? `← Group: ${esc(groups[st.grp].label)}` : "← Whole network"}</a>
+        <div class="eyebrow" style="margin-top:8px">Selected</div><h2 style="margin-bottom:4px">${esc(a.label)}</h2>
+        ${gi ? `<div class="small muted" style="margin-bottom:6px">group: <a href="javascript:void 0" id="p-grp">${esc(gi.label)}</a></div>` : ""}
         <div class="chips" style="margin-bottom:10px">${App.orgChips(a.loc.join(";"))}</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px">${subBtn}${acc && App.idx.byAcc.has(acc) ? `<a class="btn small" href="#/protein/${esc(acc)}">Open protein page →</a>` : ""}</div>
         ${subBtn && !sub ? `<div class="small muted" style="margin-top:4px">sequence bars with the cross-linked residues · or double-click the protein</div>` : ""}
@@ -567,9 +659,11 @@
         <div class="small muted" style="margin:-4px 0 6px">Click a partner to see the cross-linked residues.</div>
         <div style="display:flex;flex-direction:column;gap:3px;font-size:13px">${partners.slice(0, 150).map((p) => `<a href="javascript:void 0" data-n="${p.o}" style="display:flex;justify-content:space-between;gap:6px"><span>${esc(p.gene)}</span><span>${App.srcBadges(p.mask)}${p.rp ? `<span class="muted num"> ${p.rp}</span>` : ""}</span></a>`).join("")}</div>`;
       $$("#net-side [data-n]").forEach((l) => (l.onclick = () => showEdge(i, +l.dataset.n)));
+      $("#p-back").onclick = back;
+      const pg = $("#p-grp"); if (pg) pg.onclick = () => selectGroup(a.grp);
       const ob = $("#net-open-sub"); if (ob) ob.onclick = () => openSub(i);
       refresh();
-      if (fit && !sub) fitSel();
+      if (fit && !sub) fitNodes([st.sel, ...st.neigh]);
     }
     // residue pairs behind one edge: both sequences as bars, each cross-link as a line between its two lysines
     async function showEdge(i, o) {
@@ -684,7 +778,7 @@
       if (!sub) return;
       sub.sim.stop(); sub = null;
       $("#net-sub").setAttribute("hidden", ""); $("#net-subbar").hidden = true; $("#sigma").style.visibility = ""; $("#net-count").hidden = false;
-      $("#net-hint").textContent = "Scroll to zoom · click a protein for its subnetwork, double-click for the residue view · click an edge for the cross-linked residues · click the background to return";
+      $("#net-hint").textContent = HINT;
       renderer.resize(); select(st.sel, true);
     }
     function relayout() {
@@ -759,7 +853,12 @@
     const layout = $("#net-layout");
     const setFull = (on) => { layout.classList.toggle("is-full", on); $("#net-fs").textContent = on ? "✕ Exit full screen" : "⛶ Full screen"; renderer.resize(); renderer.refresh(); if (sub) subFit(); };
     $("#net-fs").onclick = () => setFull(!layout.classList.contains("is-full"));
-    const onKey = (e) => { if (e.key === "Escape" && layout.classList.contains("is-full")) setFull(false); };
+    // Esc goes up one level; on the whole network it leaves full screen
+    const onKey = (e) => {
+      if (e.key !== "Escape" || e.target.closest?.("input, select, textarea")) return;
+      if (sub || st.sel != null || st.grp != null) back(); else if (layout.classList.contains("is-full")) setFull(false);
+    };
+    $("#net-back").onclick = back;
     document.addEventListener("keydown", onKey);
 
     App.bindTips($("#net-side"));
@@ -776,16 +875,29 @@
     });
     renderer.on("leaveEdge", () => { $("#sigma").style.cursor = ""; App.tipHide(); });
     renderer.on("clickEdge", ({ edge }) => { const [s, t2] = G.extremities(edge); const a = +s, b = +t2; showEdge(st.sel === b ? b : a, st.sel === b ? a : b); });
-    renderer.on("clickNode", ({ node }) => select(+node, true));
+    renderer.on("clickNode", ({ node }) => {
+      const a = G.getNodeAttributes(node);
+      if (a.kind === "m") selectGroup(a.gid); else select(+node, true);
+    });
     renderer.on("doubleClickNode", ({ node, event }) => {
       event.preventSigmaDefault();
+      if (G.getNodeAttribute(node, "kind") === "m") return;
       const n = +node, center = st.sel != null && st.neigh.has(n) ? st.sel : n;
       barSet.add(n); openSub(center);
     });
-    renderer.on("clickStage", () => { select(null); renderer.getCamera().animatedReset({ duration: 400 }); });
-    renderer.on("enterNode", () => { $("#sigma").style.cursor = "pointer"; });
-    renderer.on("leaveNode", () => { $("#sigma").style.cursor = ""; });
+    renderer.on("clickStage", back);
+    // hovering a protein on the whole map or in a group highlights it and its partners
+    renderer.on("enterNode", ({ node }) => {
+      $("#sigma").style.cursor = "pointer";
+      if (st.sel != null || G.getNodeAttribute(node, "kind") === "m") return;
+      st.hover = +node; st.hoverN = new Set();
+      G.forEachEdge(node, (k, a, s, t) => { if (baseOk(k, a)) st.hoverN.add(+s === +node ? +t : +s); });
+      renderer.refresh();
+    });
+    renderer.on("leaveNode", () => { $("#sigma").style.cursor = ""; if (st.hover != null) { st.hover = null; renderer.refresh(); } });
     const reapply = () => { if (sub) openSub(sub.center); else if (st.sel != null) select(st.sel); else refresh(); };
+    $("#net-glab").onchange = (e) => { st.glab = e.target.checked; renderer.refresh(); };
+    $("#net-cross").onchange = (e) => { st.cross = e.target.checked; refresh(); };
     $$("#net-src input").forEach((c) => (c.onchange = () => { st.src = $$("#net-src input").reduce((s, i) => s | (i.checked ? +i.value : 0), 0); reapply(); }));
     $("#net-rp").oninput = (e) => { st.rp = +e.target.value; $("#net-rp-v").textContent = st.rp; reapply(); };
     $("#net-org").onchange = (e) => { st.org = e.target.value; reapply(); };
@@ -796,10 +908,10 @@
       if (i == null) i = net.nodes.findIndex((g) => g.toUpperCase() === e.target.value.trim().toUpperCase());
       if (i != null && i >= 0) { if (sub) openSub(i); else select(i, true); } else e.target.setCustomValidity("Not in the network"), e.target.reportValidity(), setTimeout(() => e.target.setCustomValidity(""), 1500);
     };
-    const onTheme = () => { renderer.setSetting("labelColor", { color: App.cssVar("--ink") }); renderer.setSetting("defaultEdgeColor", App.cssVar("--net-edge")); refresh(); };
+    const onTheme = () => { palette(); renderer.setSetting("labelColor", { color: App.cssVar("--ink") }); refresh(); };
     window.addEventListener("themechange", onTheme);
     unmount(() => { if (sub) sub.sim.stop(); renderer.kill(); App.tipHide(); window.removeEventListener("themechange", onTheme); document.removeEventListener("keydown", onKey); });
-    count();
+    home();
     if (focusAcc) { const i = net.nodeOfAcc.get(App.resolve(focusAcc)); if (i != null) setTimeout(() => select(i, true), 50); }
   };
 
