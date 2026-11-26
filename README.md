@@ -15,7 +15,7 @@ Web_Visualization/
 ├── scripts/
 │   ├── 00_copy_raw.sh    copy source files into data/raw/
 │   ├── 01_build_data.py  tables → JSON (proteins, network, per-protein shards, SLiMs, complexes)
-│   ├── 02_layout.py      organelle-anchored force layout of the core interactome
+│   ├── 02_layout.py      ForceAtlas2 (LinLog) layout of the core interactome
 │   └── 03_publish.py     copy data/processed/ into site/data/; stamp ?v=<hash> on css/js links
 └── site/                 the static website (deploy this folder only)
     ├── index.html, css/, js/

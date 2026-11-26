@@ -417,7 +417,7 @@
     const net = await App.network();
     el.innerHTML = `
       <div class="page-head"><div class="eyebrow">Systems</div><h1>Interactome network</h1>
-        <p>${fmt(net.edges.length)} PPIs among ${fmt(net.nodes.length)} proteins in the HEK293 + Jurkat core interactome, laid out around organelle anchors. Filter by evidence and compartment; click a protein to reduce the map to its subnetwork, double-click it for the residue view.</p></div>
+        <p>${fmt(net.edges.length)} PPIs among ${fmt(net.nodes.length)} proteins in the HEK293 + Jurkat core interactome in one ForceAtlas2 (LinLog) layout, where tightly cross-linked assemblies form clusters; colour marks the compartment. Filter by evidence and compartment; click a protein to reduce the map to its subnetwork, double-click it for the residue view.</p></div>
       <div class="net-layout" id="net-layout">
         <div class="card net-panel">
           <h3>Find protein</h3>
