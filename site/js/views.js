@@ -410,12 +410,15 @@
   };
 
   /* ── network ──────────────────────────────────────────────────────────── */
+  // Three levels: the protein map; the subnetwork of a clicked protein (it, its partners and the
+  // links among them); the residue view (d3), where proteins can be drawn as sequence bars and
+  // cross-links run residue to residue.
   views.network = async (el, focusAcc) => {
     const net = await App.network();
     el.innerHTML = `
       <div class="page-head"><div class="eyebrow">Systems</div><h1>Interactome network</h1>
-        <p>${fmt(net.edges.length)} PPIs among ${fmt(net.nodes.length)} proteins in the HEK293 + Jurkat core interactome, laid out around organelle anchors. Filter by evidence and compartment; click a protein to inspect its neighbourhood.</p></div>
-      <div class="net-layout">
+        <p>${fmt(net.edges.length)} PPIs among ${fmt(net.nodes.length)} proteins in the HEK293 + Jurkat core interactome, laid out around organelle anchors. Filter by evidence and compartment; click a protein to reduce the map to its subnetwork, double-click it for the residue view.</p></div>
+      <div class="net-layout" id="net-layout">
         <div class="card net-panel">
           <h3>Find protein</h3>
           <input type="search" id="net-q" placeholder="Gene symbol" style="width:100%">
@@ -431,7 +434,19 @@
           <select id="net-org" style="width:100%"><option value="">All compartments</option>${App.meta.compartments.map((c) => `<option value="${c}">${esc(App.orgLabel(c))}</option>`).join("")}<option value="__none">Unassigned only</option></select>
           <div class="legend" style="flex-direction:column;gap:4px;margin-top:12px">${App.meta.compartments.map((c) => `<span><span class="dot" style="background:${App.orgColor(c)};margin-right:6px"></span>${esc(App.orgLabel(c))}</span>`).join("")}<span><span class="dot" style="background:var(--aug);margin-right:6px"></span>Unassigned</span></div>
         </div>
-        <div class="card net-canvas"><div id="sigma"></div><div class="net-count" id="net-count"></div><div class="net-hint">Scroll to zoom · drag to pan · click a node, then a partner or an edge to see the cross-linked residues</div></div>
+        <div class="card net-canvas">
+          <div id="sigma"></div>
+          <svg id="net-sub" hidden aria-label="Residue view of the selected subnetwork"></svg>
+          <div class="net-subbar" id="net-subbar" hidden>
+            <button class="btn small" id="sub-back">← Network map</button><span class="muted" id="sub-info"></span>
+            <label><input type="checkbox" id="sub-pp" checked> links among partners</label>
+            <button class="btn small" id="sub-bars">All as bars</button><button class="btn small" id="sub-nodes">All as nodes</button>
+            <span class="muted">double-click a protein to toggle its sequence bar · click a link for its residue pairs</span>
+          </div>
+          <div class="net-count" id="net-count"></div>
+          <div class="net-hint" id="net-hint">Scroll to zoom · click a protein for its subnetwork, double-click for the residue view · click an edge for the cross-linked residues · click the background to return</div>
+          <button class="btn small net-fs" id="net-fs" title="Full screen (Esc to leave)">⛶ Full screen</button>
+        </div>
         <div class="card net-panel" id="net-side"><p class="muted">Select a protein to see its partners.</p></div>
       </div>`;
 
@@ -441,7 +456,7 @@
       const loc = App.locList(App.nodeLoc(net, i));
       G.addNode(i, { x: net.xy[i][0], y: net.xy[i][1], label: g, size: 1 + Math.min(5, Math.log2(net.adj[i].length + 1) * 0.55), color: loc[0] ? App.meta.organelleColors[loc[0]] : aug, loc });
     });
-    net.edges.forEach((e, k) => { if (!G.hasEdge(e[0], e[1])) G.addEdgeWithKey(k, e[0], e[1], { mask: e[2], rp: Math.max(e[3], e[4]), size: 0.4 }); });
+    net.edges.forEach((e, k) => { if (!G.hasEdge(e[0], e[1])) G.addEdgeWithKey(k, e[0], e[1], { mask: e[2], rp: Math.max(e[3], e[4]), h: e[3], j: e[4], size: 0.4 }); });
 
     const st = { src: 31, rp: 0, org: "", sel: null, neigh: new Set(), q: null, edge: null };
     const edgeOk = (a) => (a.mask & st.src) && (!App.isOriginal(a.mask) || a.rp >= st.rp || !(a.mask & 3));
@@ -453,10 +468,10 @@
         const r = { ...a };
         if (!nodeOk(n, a)) { r.hidden = true; return r; }
         if (st.sel != null) {
+          // subnetwork: only the selected protein and its partners stay on the map
           if (+n === st.sel) { r.highlighted = true; r.zIndex = 2; r.size = a.size + 3; }
           else if (st.neigh.has(+n)) { r.zIndex = 1; r.forceLabel = st.neigh.size < 60; }
-          // background nodes shrink to dots so they do not cover the highlighted edges
-          else { r.color = App.cssVar("--grid"); r.label = ""; r.size = Math.min(a.size, 1.2); r.zIndex = 0; }
+          else r.hidden = true;
         }
         return r;
       },
@@ -468,6 +483,7 @@
         if (k === st.edge) { r.size = 3.5; r.color = App.cssVar("--accent"); r.zIndex = 2; r.hidden = false; return r; }
         if (st.sel != null) {
           if (+s === st.sel || +t === st.sel) { r.size = 1.2; r.color = App.isOriginal(a.mask) ? App.cssVar("--ink-2") : App.cssVar("--aug"); r.zIndex = 1; }
+          else if (st.neigh.has(+s) && st.neigh.has(+t)) { r.size = 0.6; r.zIndex = 0; }   // links among partners
           else r.hidden = true;
         }
         return r;
@@ -477,8 +493,16 @@
       let ne = 0; G.forEachEdge((k, a, s, t) => { if (edgeOk(a) && nodeOk(s, G.getNodeAttributes(s)) && nodeOk(t, G.getNodeAttributes(t))) ne++; });
       $("#net-count").textContent = `${fmt(ne)} edges shown`;
     };
-    const refresh = () => { renderer.refresh(); count(); };
-    function select(i, zoom) {
+    const refresh = () => { renderer.refresh(); count(); subHighlight(); };
+    // fit the camera to the selected protein and its partners
+    function fitSel() {
+      if (st.sel == null) return;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      [st.sel, ...st.neigh].forEach((n) => { const d = renderer.getNodeDisplayData(n); if (!d) return; x0 = Math.min(x0, d.x); y0 = Math.min(y0, d.y); x1 = Math.max(x1, d.x); y1 = Math.max(y1, d.y); });
+      if (!isFinite(x0)) return;
+      renderer.getCamera().animate({ x: (x0 + x1) / 2, y: (y0 + y1) / 2, ratio: Math.min(1, Math.max(0.03, Math.max(x1 - x0, y1 - y0) * 1.3)) }, { duration: 500 });
+    }
+    function select(i, fit) {
       if (i != null && !nodeOk(i, G.getNodeAttributes(i))) { st.org = ""; $("#net-org").value = ""; }
       st.sel = i; st.neigh = new Set(); st.edge = null;
       if (i == null) { $("#net-side").innerHTML = `<p class="muted">Select a protein to see its partners.</p>`; refresh(); return; }
@@ -488,19 +512,19 @@
         const k = G.edge(i, o), ea = G.getEdgeAttributes(k);
         return { o, gene: net.nodes[o], mask: ea.mask, rp: ea.rp };
       }).sort((x, y) => y.rp - x.rp || x.gene.localeCompare(y.gene));
+      const subBtn = sub && sub.center === i ? "" : `<button class="btn small primary" id="net-open-sub">${sub ? "Centre residue view here" : "Open residue view →"}</button>`;
       $("#net-side").innerHTML = `
         <div class="eyebrow">Selected</div><h2 style="margin-bottom:4px">${esc(a.label)}</h2>
         <div class="chips" style="margin-bottom:10px">${App.orgChips(a.loc.join(";"))}</div>
-        ${acc && App.idx.byAcc.has(acc) ? `<a class="btn small primary" href="#/protein/${esc(acc)}">Open protein page →</a>` : ""}
+        <div style="display:flex;flex-wrap:wrap;gap:6px">${subBtn}${acc && App.idx.byAcc.has(acc) ? `<a class="btn small" href="#/protein/${esc(acc)}">Open protein page →</a>` : ""}</div>
+        ${subBtn && !sub ? `<div class="small muted" style="margin-top:4px">sequence bars with the cross-linked residues · or double-click the protein</div>` : ""}
         <h3 style="margin-top:14px">${partners.length} partners shown</h3>
         <div class="small muted" style="margin:-4px 0 6px">Click a partner to see the cross-linked residues.</div>
         <div style="display:flex;flex-direction:column;gap:3px;font-size:13px">${partners.slice(0, 150).map((p) => `<a href="javascript:void 0" data-n="${p.o}" style="display:flex;justify-content:space-between;gap:6px"><span>${esc(p.gene)}</span><span>${App.srcBadges(p.mask)}${p.rp ? `<span class="muted num"> ${p.rp}</span>` : ""}</span></a>`).join("")}</div>`;
       $$("#net-side [data-n]").forEach((l) => (l.onclick = () => showEdge(i, +l.dataset.n)));
+      const ob = $("#net-open-sub"); if (ob) ob.onclick = () => openSub(i);
       refresh();
-      if (zoom) {
-        const d = renderer.getNodeDisplayData(i);
-        if (d) renderer.getCamera().animate({ x: d.x, y: d.y, ratio: 0.25 }, { duration: 500 });
-      }
+      if (fit && !sub) fitSel();
     }
     // residue pairs behind one edge: both sequences as bars, each cross-link as a line between its two lysines
     async function showEdge(i, o) {
@@ -542,27 +566,194 @@
         <div style="display:flex;flex-wrap:wrap;gap:6px">${pageBtns}</div>`;
       wire();
     }
+
+    /* ── residue view (d3) ── */
+    let sub = null, pairData = null;
+    const barSet = new Set();
+    const nodeR = (d) => Math.min(14, 5 + Math.sqrt(d.deg) * 0.55);
+    const seqLen = (d) => d.len || d.maxres || 1;
+    const barW = (d) => Math.max(90, Math.min(480, seqLen(d) * 0.35));
+    const lx = (d, res) => -d.w / 2 + (Math.min(res, seqLen(d)) - 1) / Math.max(1, seqLen(d) - 1) * d.w;
+    const pairColor = (m) => viz.CELL_COLORS[m] || App.cssVar("--muted");
+    async function openSub(center) {
+      if (!pairData) { $("#net-hint").textContent = "Loading residue pairs…"; pairData = await App.load("network_pairs"); }
+      if (sub) sub.sim.stop();
+      const cells = st.src & 3, nodes = [], byKey = new Map();
+      const add = (i) => {
+        const acc = net.acc[i], a = G.getNodeAttributes(i);
+        const d = { i, gene: net.nodes[i], acc, len: acc ? App.prot(acc)?.len : null, color: a.color, deg: net.adj[i].length, bar: barSet.has(i), maxres: 1,
+          x: (a.x - G.getNodeAttribute(center, "x")) * 2600 + (Math.random() - 0.5) * 20, y: -(a.y - G.getNodeAttribute(center, "y")) * 2600 + (Math.random() - 0.5) * 20 };
+        d.r = i === center ? 13 : nodeR(d); nodes.push(d); byKey.set(i, d); return d;
+      };
+      const c = add(center); c.fx = 0; c.fy = 0;
+      G.forEachEdge(center, (k, a, s, t) => { const o = +s === center ? +t : +s; if (edgeOk(a) && nodeOk(o, G.getNodeAttributes(o)) && !byKey.has(o)) add(o); });
+      const allowPP = $("#sub-pp").checked, links = []; let dropped = 0;
+      G.forEachEdge((k, a, s, t) => {
+        if (!byKey.has(+s) || !byKey.has(+t) || !edgeOk(a)) return;
+        const isC = +s === center || +t === center;
+        if (!isC && !allowPP) { dropped++; return; }
+        const e = net.edges[k], orig = (a.mask & cells) !== 0;
+        const pairs = orig ? (pairData.inter[k] || []).filter((p) => p[2] & cells) : [];
+        links.push({ k: +k, source: byKey.get(e[0]), target: byKey.get(e[1]), pairs, aug: !orig, center: isC, mask: a.mask });
+      });
+      if (links.length > 5000) { const keep = links.filter((l) => l.center); dropped += links.length - keep.length; links.length = 0; links.push(...keep); }
+      links.forEach((l) => l.pairs.forEach((p) => { l.source.maxres = Math.max(l.source.maxres, p[0]); l.target.maxres = Math.max(l.target.maxres, p[1]); }));
+      nodes.forEach((d) => { d.intra = (pairData.intra[d.i] || []).filter((p) => p[2] & cells); d.intra.forEach((p) => { d.maxres = Math.max(d.maxres, p[0], p[1]); }); d.w = barW(d); });
+
+      const svg = d3.select("#net-sub"); svg.selectAll("*").remove(); svg.classed("many", nodes.length > 150);
+      const g = svg.append("g");
+      const zoom = d3.zoom().scaleExtent([0.08, 8]).on("zoom", (ev) => g.attr("transform", ev.transform));
+      svg.call(zoom).on("dblclick.zoom", null);
+      const linkSel = g.append("g").selectAll("g").data(links).join("g").attr("class", (l) => "lk" + (l.aug ? " aug" : ""))
+        .on("click", (ev, l) => { ev.stopPropagation(); showEdge(l.source.i, l.target.i); });
+      linkSel.append("title").text((l) => `${l.source.gene} – ${l.target.gene}: ` + (l.aug ? `augmented (${App.srcText(l.mask)}), no residue pairs` : `${l.pairs.length} residue pair${l.pairs.length === 1 ? "" : "s"}`));
+      const sim = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).distance((l) => (l.center ? 120 : 80) + (l.source.bar ? l.source.w / 3 : 0) + (l.target.bar ? l.target.w / 3 : 0)).strength((l) => (l.center ? 0.5 : 0.12)))
+        .force("charge", d3.forceManyBody().strength(nodes.length > 200 ? -50 : -180))
+        .force("collide", d3.forceCollide().radius((d) => (d.bar ? d.w / 2 + 14 : d.r + 8)).iterations(2))
+        .force("x", d3.forceX().strength(0.02)).force("y", d3.forceY().strength(0.02));
+      let clickTimer = null;
+      const nodeSel = g.append("g").selectAll("g").data(nodes).join("g").attr("class", "node")
+        .call(d3.drag().on("start", (ev, d) => { if (!ev.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+          .on("drag", (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+          .on("end", (ev, d) => { if (!ev.active) sim.alphaTarget(0); if (d.i !== center) { d.fx = null; d.fy = null; } }))
+        .on("click", (ev, d) => { ev.stopPropagation(); clearTimeout(clickTimer); clickTimer = setTimeout(() => select(d.i), 220); })
+        .on("dblclick", (ev, d) => { ev.stopPropagation(); clearTimeout(clickTimer); toggleBar(d); });
+      svg.on("click", () => { if (st.edge != null || st.sel !== center) select(center); });
+      sub = { center, nodes, links, sim, svg, zoom, nodeSel, linkSel };
+      nodeSel.each(function (d) { drawSubNode(d3.select(this), d); });
+      sim.on("tick", subTick);
+      $("#net-sub").removeAttribute("hidden"); $("#net-subbar").hidden = false; $("#sigma").style.visibility = "hidden"; $("#net-count").hidden = true;
+      $("#net-hint").textContent = "Drag proteins · scroll to zoom";
+      $("#sub-info").textContent = `${net.nodes[center]}: ${fmt(nodes.length - 1)} partners, ${fmt(links.length)} links` + (dropped ? ` (${fmt(dropped)} links among partners not drawn)` : "");
+      subFit();
+      select(center);
+    }
+    function subFit() {
+      if (!sub) return;
+      const b = $("#net-sub").getBoundingClientRect(), n = sub.nodes.length, bars = sub.nodes.filter((d) => d.bar).length;
+      const k = (n > 300 ? 0.35 : n > 120 ? 0.55 : n > 40 ? 0.8 : 1) * (bars > n / 2 ? 0.6 : 1);
+      sub.svg.transition().duration(350).call(sub.zoom.transform, d3.zoomIdentity.translate(b.width / 2, b.height / 2).scale(k));
+    }
+    function closeSub() {
+      if (!sub) return;
+      sub.sim.stop(); sub = null;
+      $("#net-sub").setAttribute("hidden", ""); $("#net-subbar").hidden = true; $("#sigma").style.visibility = ""; $("#net-count").hidden = false;
+      $("#net-hint").textContent = "Scroll to zoom · click a protein for its subnetwork, double-click for the residue view · click an edge for the cross-linked residues · click the background to return";
+      renderer.resize(); select(st.sel, true);
+    }
+    function relayout() {
+      const fl = sub.sim.force("link"), fc = sub.sim.force("collide"); fl.distance(fl.distance()); fc.radius(fc.radius());
+    }
+    function toggleBar(d) {
+      d.bar = !d.bar; if (d.bar) barSet.add(d.i); else barSet.delete(d.i);
+      sub.nodeSel.filter((x) => x === d).each(function (x) { drawSubNode(d3.select(this), x); });
+      relayout(); sub.sim.alpha(0.5).restart();
+    }
+    function setAllBars(flag) {
+      if (!sub) return;
+      sub.nodes.forEach((d) => { d.bar = flag; if (flag) barSet.add(d.i); else barSet.delete(d.i); });
+      sub.nodeSel.each(function (d) { drawSubNode(d3.select(this), d); });
+      relayout(); sub.sim.force("charge").strength(flag ? (sub.nodes.length > 200 ? -120 : -400) : (sub.nodes.length > 200 ? -50 : -180));
+      sub.sim.alpha(0.8).restart(); subFit();
+    }
+    function drawSubNode(sel, d) {
+      sel.selectAll("*").remove(); sel.classed("bar", d.bar);
+      sel.append("title").text(`${d.gene}${d.acc ? " · " + d.acc : ""}${d.len ? " · " + d.len + " aa" : ""} · ${d.deg} partners`);
+      if (!d.bar) {
+        sel.append("circle").attr("r", d.r).style("fill", d.color);
+        sel.append("text").attr("y", d.r + 12).attr("text-anchor", "middle").text(d.gene);
+        return;
+      }
+      const w = d.w;
+      // intra-protein cross-links as arcs above the bar
+      d.intra.forEach((p) => {
+        const x1 = lx(d, p[0]), x2 = lx(d, p[1]), h = Math.min(60, 8 + Math.abs(x2 - x1) * 0.4);
+        sel.append("path").attr("class", "arc").style("stroke", pairColor(p[2])).attr("d", `M${x1.toFixed(1)} -8 Q${((x1 + x2) / 2).toFixed(1)} ${(-8 - h).toFixed(1)} ${x2.toFixed(1)} -8`);
+      });
+      sel.append("rect").attr("class", "seq").attr("x", -w / 2).attr("y", -8).attr("width", w).attr("height", 16).attr("rx", 3);
+      // cross-linked lysines as ticks
+      const ticks = new Map();
+      sub.links.forEach((l) => {
+        if (l.source === d) l.pairs.forEach((p) => ticks.set(p[0], (ticks.get(p[0]) || 0) | p[2]));
+        if (l.target === d) l.pairs.forEach((p) => ticks.set(p[1], (ticks.get(p[1]) || 0) | p[2]));
+      });
+      ticks.forEach((m, res) => { sel.append("rect").attr("x", lx(d, res) - 1).attr("y", -8).attr("width", 2).attr("height", 16).style("fill", pairColor(m)).append("title").text(`K${res}`); });
+      sel.append("text").attr("class", "seqname").attr("x", -w / 2).attr("y", -14).text(d.gene);
+      sel.append("text").attr("class", "seqlbl").attr("x", -w / 2).attr("y", 20).text("1");
+      sel.append("text").attr("class", "seqlbl").attr("x", w / 2).attr("y", 20).attr("text-anchor", "end").text(d.len ? d.len + " aa" : "max residue " + seqLen(d));
+    }
+    function subTick() {
+      if (!sub) return;
+      sub.nodeSel.attr("transform", (d) => `translate(${d.x.toFixed(1)},${d.y.toFixed(1)})`);
+      sub.linkSel.each(function (l) {
+        const sel = d3.select(this), S = l.source, T = l.target;
+        if ((!S.bar && !T.bar) || l.aug) {
+          // one line per protein pair: centre to centre
+          sel.selectAll("line").data([l]).join("line").style("stroke", l.aug ? null : pairColor(l.mask & 3))
+            .attr("x1", S.x).attr("y1", S.y).attr("x2", T.x).attr("y2", T.y);
+        } else {
+          // one line per residue pair: lysine to lysine
+          sel.selectAll("line").data(l.pairs).join("line").style("stroke", (p) => pairColor(p[2]))
+            .attr("x1", (p) => (S.bar ? S.x + lx(S, p[0]) : S.x)).attr("y1", () => (S.bar ? S.y + (T.y > S.y ? 8 : -8) : S.y))
+            .attr("x2", (p) => (T.bar ? T.x + lx(T, p[1]) : T.x)).attr("y2", () => (T.bar ? T.y + (S.y > T.y ? 8 : -8) : T.y));
+        }
+      });
+    }
+    function subHighlight() {
+      if (!sub) return;
+      sub.nodeSel.classed("sel", (d) => d.i === st.sel).classed("center", (d) => d.i === sub.center);
+      sub.linkSel.classed("sel", (l) => l.k === st.edge).classed("faded", (l) => st.sel != null && l.source.i !== st.sel && l.target.i !== st.sel && l.k !== st.edge);
+    }
+    $("#sub-back").onclick = closeSub;
+    $("#sub-pp").onchange = () => { if (sub) openSub(sub.center); };
+    $("#sub-bars").onclick = () => setAllBars(true);
+    $("#sub-nodes").onclick = () => setAllBars(false);
+
+    /* full screen */
+    const layout = $("#net-layout");
+    const setFull = (on) => { layout.classList.toggle("is-full", on); $("#net-fs").textContent = on ? "✕ Exit full screen" : "⛶ Full screen"; renderer.resize(); renderer.refresh(); if (sub) subFit(); };
+    $("#net-fs").onclick = () => setFull(!layout.classList.contains("is-full"));
+    const onKey = (e) => { if (e.key === "Escape" && layout.classList.contains("is-full")) setFull(false); };
+    document.addEventListener("keydown", onKey);
+
     App.bindTips($("#net-side"));
+    // hovering an edge shows its residue-pair count
+    let lastMouse = null;
+    $("#sigma").addEventListener("mousemove", (e) => { lastMouse = e; App.tipMove(e); });
+    renderer.on("enterEdge", ({ edge }) => {
+      $("#sigma").style.cursor = "pointer";
+      const a = G.getEdgeAttributes(edge), [s, t] = G.extremities(edge);
+      const txt = App.isOriginal(a.mask)
+        ? `residue pairs: HEK293 ${fmt(a.h)} · Jurkat ${fmt(a.j)}`
+        : `augmented (${esc(App.srcText(a.mask))}): no residue pairs`;
+      App.tipShow(`<b>${esc(net.nodes[+s])} – ${esc(net.nodes[+t])}</b><br>${txt}`, lastMouse);
+    });
+    renderer.on("leaveEdge", () => { $("#sigma").style.cursor = ""; App.tipHide(); });
     renderer.on("clickEdge", ({ edge }) => { const [s, t2] = G.extremities(edge); const a = +s, b = +t2; showEdge(st.sel === b ? b : a, st.sel === b ? a : b); });
-    renderer.on("enterEdge", () => { $("#sigma").style.cursor = "pointer"; });
-    renderer.on("leaveEdge", () => { $("#sigma").style.cursor = ""; });
-    renderer.on("clickNode", ({ node }) => select(+node));
-    renderer.on("clickStage", () => select(null));
-    renderer.on("enterNode", ({ node }) => { $("#sigma").style.cursor = "pointer"; });
+    renderer.on("clickNode", ({ node }) => select(+node, true));
+    renderer.on("doubleClickNode", ({ node, event }) => {
+      event.preventSigmaDefault();
+      const n = +node, center = st.sel != null && st.neigh.has(n) ? st.sel : n;
+      barSet.add(n); openSub(center);
+    });
+    renderer.on("clickStage", () => { select(null); renderer.getCamera().animatedReset({ duration: 400 }); });
+    renderer.on("enterNode", () => { $("#sigma").style.cursor = "pointer"; });
     renderer.on("leaveNode", () => { $("#sigma").style.cursor = ""; });
-    $$("#net-src input").forEach((c) => (c.onchange = () => { st.src = $$("#net-src input").reduce((s, i) => s | (i.checked ? +i.value : 0), 0); if (st.sel != null) select(st.sel); else refresh(); }));
-    $("#net-rp").oninput = (e) => { st.rp = +e.target.value; $("#net-rp-v").textContent = st.rp; if (st.sel != null) select(st.sel); else refresh(); };
-    $("#net-org").onchange = (e) => { st.org = e.target.value; refresh(); };
+    const reapply = () => { if (sub) openSub(sub.center); else if (st.sel != null) select(st.sel); else refresh(); };
+    $$("#net-src input").forEach((c) => (c.onchange = () => { st.src = $$("#net-src input").reduce((s, i) => s | (i.checked ? +i.value : 0), 0); reapply(); }));
+    $("#net-rp").oninput = (e) => { st.rp = +e.target.value; $("#net-rp-v").textContent = st.rp; reapply(); };
+    $("#net-org").onchange = (e) => { st.org = e.target.value; reapply(); };
     $("#net-q").onkeydown = (e) => {
       if (e.key !== "Enter") return;
       const acc = App.resolve(e.target.value);
       let i = acc != null ? net.nodeOfAcc.get(acc) : null;
       if (i == null) i = net.nodes.findIndex((g) => g.toUpperCase() === e.target.value.trim().toUpperCase());
-      if (i != null && i >= 0) select(i, true); else e.target.setCustomValidity("Not in the network"), e.target.reportValidity(), setTimeout(() => e.target.setCustomValidity(""), 1500);
+      if (i != null && i >= 0) { if (sub) openSub(i); else select(i, true); } else e.target.setCustomValidity("Not in the network"), e.target.reportValidity(), setTimeout(() => e.target.setCustomValidity(""), 1500);
     };
     const onTheme = () => { renderer.setSetting("labelColor", { color: App.cssVar("--ink") }); renderer.setSetting("defaultEdgeColor", App.cssVar("--net-edge")); refresh(); };
     window.addEventListener("themechange", onTheme);
-    unmount(() => { renderer.kill(); window.removeEventListener("themechange", onTheme); });
+    unmount(() => { if (sub) sub.sim.stop(); renderer.kill(); App.tipHide(); window.removeEventListener("themechange", onTheme); document.removeEventListener("keydown", onKey); });
     count();
     if (focusAcc) { const i = net.nodeOfAcc.get(App.resolve(focusAcc)); if (i != null) setTimeout(() => select(i, true), 50); }
   };

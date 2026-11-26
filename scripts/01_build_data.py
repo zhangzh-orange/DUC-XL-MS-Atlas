@@ -7,6 +7,7 @@ Outputs
 meta.json            summary counts, palettes, source codes
 proteins.json        one record per cross-linked protein (columnar)
 network_edges.json   PPI edges (original + augmented) on gene-symbol nodes
+network_pairs.json   residue pairs per network edge and intra-protein pairs per node
 details/XX.json      per-protein details, sharded by accession hash
 slims.json           Table S4 candidate motifs
 contacts.json        Table S3 contact-site candidates
@@ -241,7 +242,7 @@ def main():
     s1 = TAB / "Supplementary_Table_1_DUC-XL-MS_crosslinks.xlsx"
     rp = {c: pd.read_excel(s1, sheet_name=f"{c}_residue_pairs", usecols=[0, 3])
           for c in ("HEK293", "Jurkat")}
-    ppi = {c: pd.read_excel(s1, sheet_name=f"{c}_PPIs", usecols=[0, 1, 2, 3, 4])
+    ppi = {c: pd.read_excel(s1, sheet_name=f"{c}_PPIs", usecols=[0, 1, 2, 3, 4, 5])
            for c in ("HEK293", "Jurkat")}
     # UniProt entry-name prefixes (e.g. HCLS1_HUMAN) for proteins absent from
     # the HEK293 search FASTA, including sameset/subset group members
@@ -316,17 +317,26 @@ def main():
 
     # PPI residue-pair counts per cell line (inter only), keyed by alias pair
     ppi_counts = defaultdict(lambda: [0, 0])
+    ppi_pairs = defaultdict(dict)  # (lead A, lead B) -> {(residue on A, residue on B): cell mask}
+    alias_ref = {}                 # alias pair -> (lead A, lead B, alias of A)
     n_ppi = {}
     for i, (cell, df) in enumerate(ppi.items()):
         inter = df[df.iloc[:, 3].astype(str).str.lower() == "inter"]
         n_ppi[cell] = len(inter)
-        for lead, cnt in zip(inter.iloc[:, 0].astype(str), inter.iloc[:, 4]):
+        for lead, cnt, sup in zip(inter.iloc[:, 0].astype(str), inter.iloc[:, 4], inter.iloc[:, 5].astype(str)):
             m = PPI_RE.match(lead)
             if not m:
                 continue
             if m.group(1) == m.group(2):
                 continue
             pa, pb = m.group(1), m.group(2)
+            # supporting inter residue pairs, oriented as (pa, pb); members of the same protein group may lead them
+            for x in XL_RE.finditer(sup):
+                a1, r1, b1, r2 = x.group(1), int(x.group(2)), x.group(3), int(x.group(4))
+                if a1 != b1 and (a1 == pb or b1 == pa):  # same-accession pairs (paralog groups) keep their order
+                    r1, r2 = r2, r1
+                d = ppi_pairs[(pa, pb)]
+                d[(r1, r2)] = d.get((r1, r2), 0) | SRC[cell]
             for p in (pa, pb):
                 if gene.get(p, p) == p and p in entry_gene:
                     gene[p] = fasta_gene.get(p, entry_gene[p])
@@ -334,6 +344,7 @@ def main():
                 for gb in aliases(m.group(2)):
                     k = tuple(sorted((ga, gb)))
                     ppi_counts[k][i] = max(ppi_counts[k][i], int(cnt))
+                    alias_ref.setdefault(k, (pa, pb, ga))
 
     # Network edges from Table S5 (HEK293 + Jurkat augmented core interactome)
     hek_aug = {tuple(sorted((str(a), str(b)))) for a, b, s in
@@ -461,6 +472,27 @@ def main():
         cols["nov"].append(nov.get(a, 0))
     dump(cols, OUT / "proteins.json")
     dump({"nodes": nodes, "acc": node_acc, "edges": edges}, OUT / "network_edges.json")
+
+    # Residue pairs for the network residue view: inter pairs per edge index from the
+    # supporting residue pairs of Table S1, oriented as [residue on edge node 0, residue on
+    # edge node 1, cell mask]; intra pairs per node
+    pr_inter, pr_intra = {}, defaultdict(list)
+    for k, e in enumerate(edges):
+        ref = alias_ref.get(tuple(sorted((nodes[e[0]], nodes[e[1]]))))
+        if ref:
+            pa, pb, ga = ref
+            fwd = nodes[e[0]] == ga
+            pr_inter[k] = [[r1, r2, m] if fwd else [r2, r1, m] for (r1, r2), m in sorted(ppi_pairs[(pa, pb)].items())]
+    acc_node, name_node = {}, {}
+    for i, (g, a) in enumerate(zip(nodes, node_acc)):
+        name_node.setdefault(g, i)
+        if a:
+            acc_node.setdefault(a, i)
+    for a, lst in xl.items():
+        i = acc_node.get(a, name_node.get(gene.get(a)))
+        if i is not None:
+            pr_intra[i] += [[ra, rb, m] for b, ra, rb, m in lst if b == a]
+    dump({"inter": pr_inter, "intra": pr_intra}, OUT / "network_pairs.json")
 
     # Per-protein detail shards
     shards = defaultdict(dict)

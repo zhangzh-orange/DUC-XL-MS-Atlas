@@ -174,8 +174,29 @@ td.wrap { white-space: normal; min-width: 220px; }
 .net-panel h3 { margin-top: 14px; } .net-panel h3:first-child { margin-top: 0; }
 .net-canvas { position: relative; padding: 0; overflow: hidden; }
 #sigma { position: absolute; inset: 0; }
-.net-hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); pointer-events: none; }
+.net-hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); pointer-events: none; max-width: calc(100% - 170px); }
 .net-count { position: absolute; right: 12px; top: 10px; font-size: 12px; color: var(--muted); background: var(--surface); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); }
+.net-layout.is-full { position: fixed; inset: 0; z-index: 55; height: 100vh; min-height: 0; padding: 12px; background: var(--bg); }
+.net-fs { position: absolute; right: 12px; bottom: 8px; z-index: 2; }
+/* residue view: d3 subnetwork with sequence bars */
+#net-sub { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+.net-subbar { position: absolute; left: 12px; top: 10px; max-width: calc(100% - 24px); z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 12.5px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; }
+.net-subbar label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+#net-sub text { font-size: 11px; fill: var(--ink); pointer-events: none; }
+#net-sub .node { cursor: pointer; }
+#net-sub .node circle { stroke: var(--surface); stroke-width: 1.5; }
+#net-sub .node.sel circle { stroke: var(--ink); stroke-width: 2.5; }
+#net-sub .node.center circle { stroke: var(--accent); stroke-width: 3; }
+#net-sub .seq { fill: var(--surface-2); stroke: var(--muted); stroke-width: 0.8; }
+#net-sub .node.sel .seq, #net-sub .node.center .seq { stroke: var(--ink); stroke-width: 1.6; }
+#net-sub .seqlbl { font-family: var(--mono); font-size: 9px; fill: var(--muted); }
+#net-sub .seqname { font-weight: 600; }
+#net-sub .lk line { stroke-width: 1.3; opacity: 0.7; cursor: pointer; }
+#net-sub .lk.aug line { stroke: var(--aug); stroke-dasharray: 4 3; }
+#net-sub .lk.faded line { opacity: 0.1; }
+#net-sub .lk.sel line, #net-sub .lk:hover line { stroke-width: 2.6; opacity: 1; }
+#net-sub .arc { fill: none; stroke-width: 1; opacity: 0.55; }
+#net-sub.many .node:not(.sel):not(.center):not(.bar):not(:hover) text { display: none; }
 .range-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .range-row input[type=range] { flex: 1; }
 .check-list { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
