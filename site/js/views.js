@@ -533,6 +533,24 @@
     const renderer = new Sigma(G, $("#sigma"), {
       labelRenderedSizeThreshold: 9, labelDensity: 0.08, labelColor: { color: App.cssVar("--ink") }, zIndex: true,
       enableEdgeEvents: true, enableEdgeClickEvents: true, enableEdgeHoverEvents: true,
+      // label box of the selected protein in the theme's surface colour (sigma's default box is always white)
+      hoverRenderer: (ctx, d, s) => {
+        const size = s.labelSize, pad = 2;
+        ctx.font = `${s.labelWeight} ${size}px ${s.labelFont}`;
+        ctx.fillStyle = C.bg; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.shadowBlur = 8; ctx.shadowColor = "rgba(0,0,0,0.35)";
+        const radius = Math.max(d.size, size / 2) + pad;
+        ctx.beginPath();
+        if (typeof d.label === "string" && d.label) {
+          const w = Math.round(ctx.measureText(d.label).width + 5), h = Math.round(size + 2 * pad);
+          const ang = Math.asin(h / 2 / radius), dx = Math.sqrt(Math.abs(radius ** 2 - (h / 2) ** 2));
+          ctx.moveTo(d.x + dx, d.y + h / 2); ctx.lineTo(d.x + radius + w, d.y + h / 2);
+          ctx.lineTo(d.x + radius + w, d.y - h / 2); ctx.lineTo(d.x + dx, d.y - h / 2);
+          ctx.arc(d.x, d.y, radius, ang, -ang);
+        } else ctx.arc(d.x, d.y, radius, 0, Math.PI * 2);
+        ctx.closePath(); ctx.fill();
+        ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
+        if (d.label) { ctx.fillStyle = App.cssVar("--ink"); ctx.fillText(d.label, d.x + d.size + 3, d.y + size / 3); }
+      },
       nodeReducer: (n, a) => {
         const r = { ...a };
         if (a.kind === "m") {
