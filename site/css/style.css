@@ -334,3 +334,18 @@ tr.row-new td:first-child { box-shadow: inset 3px 0 0 var(--new-bd); }
 
 .home-h { font-size: 17px; margin: 0 0 14px; display: flex; align-items: baseline; gap: 10px; }
 .home-h a { font-weight: 500; }
+
+/* protein page: summary line, tabs, ⓘ buttons, "How to read" keys */
+.prot-sum { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 13px; color: var(--muted); }
+.prot-sum b { color: var(--ink); font-weight: 600; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--border); margin: 6px 0 16px; }
+.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 9px 16px; font: inherit; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.tabs button:hover { color: var(--ink); }
+.tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .nb { font-size: 10px; }
+.info-btn { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; padding: 0; margin-left: 4px; vertical-align: 2px; border: 1px solid var(--border); border-radius: 50%; background: var(--surface-2); color: var(--muted); font: italic 600 11px/1 Georgia, serif; cursor: help; }
+.info-btn:hover, .info-btn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+.howto { margin: -4px 0 12px; font-size: 12.5px; color: var(--ink-2); }
+.howto summary { cursor: pointer; color: var(--accent); font-weight: 600; width: max-content; }
+.howto ul { margin: 6px 0 0; padding-left: 18px; }
+.howto li { margin: 2px 0; }

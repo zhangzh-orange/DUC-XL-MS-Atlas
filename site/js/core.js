@@ -59,6 +59,10 @@ App.isOriginal = (mask) => (mask & (1 | 2)) !== 0;
 App.NOV = { loc: 1, topo: 2, correction: 4, slim: 8, contact: 16 };
 App.newBadge = (txt = "NEW", title = "New in this study: not in UniProt or the reference databases") =>
   `<span class="nb" title="${esc(title)}">${esc(txt)}</span>`;
+/* ⓘ button: explanatory text shown on hover / focus / click instead of on the page */
+App.info = (html) => `<button type="button" class="info-btn" aria-label="About this section" data-tip="${esc(html)}">i</button>`;
+/* collapsible "How to read" key for a plot */
+App.howto = (items) => `<details class="howto"><summary>How to read</summary><ul>${items.map((t) => `<li>${t}</li>`).join("")}</ul></details>`;
 /* compartment chips: DUC-XL-MS assignment with new compartments highlighted, else UniProt as default */
 App.locChips = (p) => {
   const nw = new Set(App.locList(p.newLoc));
@@ -88,6 +92,16 @@ App.bindTips = (root) => {
     if (el) App.tipShow(el.getAttribute("data-tip"), ev); else App.tipHide();
   });
   root.addEventListener("mouseleave", App.tipHide);
+  // touch / keyboard: an ⓘ button shows its text below itself
+  root.addEventListener("click", (ev) => {
+    const b = ev.target.closest(".info-btn"); if (!b) return;
+    const r = b.getBoundingClientRect(); App.tipShow(b.getAttribute("data-tip"), { clientX: r.left, clientY: r.bottom });
+  });
+  root.addEventListener("focusin", (ev) => {
+    const b = ev.target.closest(".info-btn"); if (!b) return;
+    const r = b.getBoundingClientRect(); App.tipShow(b.getAttribute("data-tip"), { clientX: r.left, clientY: r.bottom });
+  });
+  root.addEventListener("focusout", App.tipHide);
 };
 
 /* ── data model ────────────────────────────────────────────────────────── */

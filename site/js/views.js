@@ -166,11 +166,11 @@
   // "New in this protein": everything this study adds beyond UniProt and the reference databases
   const newStrip = (p, det) => {
     const N = App.NOV, it = [];
-    if (p.newLoc) it.push(`<a href="#" data-jump="sec-loc">localization: ${App.locList(p.newLoc).map(App.orgLabel).map(esc).join(", ")}</a> (not in UniProt)`);
+    if (p.newLoc) it.push(`<a href="#" data-tab="loc">localization: ${App.locList(p.newLoc).map(App.orgLabel).map(esc).join(", ")}</a> (not in UniProt)`);
     const nl = (det?.loops || []).filter((l) => l.Agreement === "novel").length;
-    if (p.nov & N.topo) it.push(`<a href="#" data-jump="sec-topo">membrane topology: ${nl} loop side${nl > 1 ? "s" : ""}</a> not in UniProt`);
-    if (p.nov & N.correction) it.push(`<a href="#" data-jump="sec-topo">topology correction</a> of UniProt`);
-    if (p.nov & N.slim) it.push(`<a href="#" data-jump="sec-slim">${det.slims.length} candidate SLiM${det.slims.length > 1 ? "s" : ""}</a> (AF3 prediction)`);
+    if (p.nov & N.topo) it.push(`<a href="#" data-tab="topo">membrane topology: ${nl} loop side${nl > 1 ? "s" : ""}</a> not in UniProt`);
+    if (p.nov & N.correction) it.push(`<a href="#" data-tab="topo">topology correction</a> of UniProt`);
+    if (p.nov & N.slim) it.push(`<a href="#" data-tab="struct">${det.slims.length} candidate SLiM${det.slims.length > 1 ? "s" : ""}</a> (AF3 prediction)`);
     if (p.nov & N.contact) it.push(`contact-site candidate (${esc(det?.contact?.["Candidate Pool"] || "")}) not in CORUM / MCS databases`);
     return it.length ? `<div class="new-strip"><span class="lead-in">★ New in ${esc(p.gene)}</span>${it.map((x) => `<span class="item">${x}</span>`).join("")}</div>` : "";
   };
@@ -214,131 +214,176 @@
     const perComp = (v, f) => String(v).split(";").map((x, k) => `${loc[k] ? esc(App.orgLabel(loc[k])) + " " : ""}${esc(f(x))}`).join(" · ");
     const cxHits = (App.meta.complexes || []).filter((c) => c.genes?.includes(p.gene));
 
+    const N = App.NOV, nDirect = rows.filter((r) => App.isOriginal(r.mask)).length;
+    const tabs = [
+      ["int", "Interactions", false],
+      ["loc", "Localization", !!(p.newLoc || p.nov & N.contact)],
+      ...(det?.loops?.length ? [["topo", "Topology", !!(p.nov & (N.topo | N.correction))]] : []),
+      ["struct", "Structure", !!(p.nov & N.slim)],
+    ];
     el.innerHTML = `
       <div class="prot-head">
         <div><div class="eyebrow">Protein</div><h1>${esc(p.gene)}</h1></div>
         <div><div class="pname">${esc(p.name || "")}</div>
-          <div class="small muted"><span class="mono">${esc(acc)}</span> · <a href="https://www.uniprot.org/uniprotkb/${esc(acc)}" target="_blank" rel="noopener">UniProt ↗</a> · <a href="#/network/${esc(acc)}">Show in network</a>${p.len ? ` · ${fmt(p.len)} aa` : ""}${cxHits.map((c) => ` · <a href="#/complex/${c.name}">${c.name} model</a>`).join("")}</div></div>
+          <div class="small muted"><span class="mono">${esc(acc)}</span> · <a href="https://www.uniprot.org/uniprotkb/${esc(acc)}" target="_blank" rel="noopener">UniProt ↗</a> · <a href="#/network/${esc(acc)}">Show in network</a>${p.len ? ` · ${fmt(p.len)} aa` : ""}${cxHits.map((c) => ` · <a href="#/complex/${c.name}">${c.name} model</a>`).join("")}</div>
+          <div class="prot-sum"><span><b>${fmt(nDirect)}</b> direct partners</span><span><b>${fmt(p.nXL)}</b> residue pairs</span>${nAug ? `<span><b>${fmt(nAug)}</b> augmented partners</span>` : ""}${det?.slims?.length ? `<span><b>${fmt(det.slims.length)}</b> candidate SLiMs</span>` : ""}${p.tm ? `<span><b>${p.tm}</b> TM helices</span>` : ""}</div></div>
         <div class="chips" style="margin-left:auto">${App.locChips(p)}</div>
       </div>
       ${newStrip(p, det)}
-      <section class="card imap-card" style="margin-bottom:16px" id="sec-imap">
-        <h2><span><span class="kicker">Site-specific interactions</span><br>Interface map of ${esc(p.gene)}
-          <span class="small muted" style="font-weight:400">${fmt(nInterH)} HEK293 inter-protein residue pairs</span></span>
-          <span class="toggles" id="imap-cell"><label><input type="checkbox" value="1" checked> HEK293</label><label><input type="checkbox" value="2" checked> Jurkat</label></span></h2>
-        <div class="card-sub">Each row is a directly cross-linked partner. Dots mark the cross-linked lysines on ${esc(p.gene)} (left) and on the partner (right); hover a row to connect each residue pair. Unlike AP-MS co-purification or STRING association scores, every interaction here is a direct contact with a known site on both proteins.</div>
-        <div class="imap-tools"><span>Order partners by</span><span class="seg" id="imap-sort"><button data-s="links" class="on">number of links</button><button data-s="pos">position on ${esc(p.gene)}</button></span>
-          <span class="legend" style="margin:0">${[1, 2, 3].map((k) => `<span><span class="dot" style="background:${viz.CELL_COLORS[k]};margin-right:5px"></span>${viz.CELL_LABELS[k]}</span>`).join("")}<span><span class="sw" style="background:var(--accent);opacity:.55;height:8px"></span>interface footprint (partners per region)</span></span></div>
-        <div id="imap"></div>
-        <div class="imap-more" id="imap-more"></div>
-        ${nAug ? `<p class="small muted" style="margin:8px 0 0">${fmt(nAug)} further partner(s) come from database augmentation and have no residue-level evidence; they are listed under <a href="#/protein/${esc(acc)}" onclick="document.getElementById('int-tbl').scrollIntoView({behavior:'smooth'});return false">Interactors</a>.</p>` : ""}
-      </section>
-      <section class="grid g4" style="margin-bottom:16px">
-        ${stat(fmt(p.nXL), "residue pairs", `HEK293: ${fmt(nIntraH)} intra · ${fmt(nInterH)} inter`)}
-        ${stat(fmt(rows.filter((r) => App.isOriginal(r.mask)).length), "direct partners", `HEK293 ${fmt(rows.filter((r) => r.mask & 1).length)} · Jurkat ${fmt(rows.filter((r) => r.mask & 2).length)}`)}
-        ${stat(fmt(nAug), "augmented partners", "triadic closure with BioPlex / OpenCell / EndoMAP")}
-        ${stat(fmt(det?.slims?.length || 0), "candidate SLiMs", det?.contact ? `contact-site candidate (${esc(det.contact["Candidate Pool"])})` : (p.tm ? `${p.tm} TM helices` : ""))}
-      </section>
-      <section class="grid g3" style="margin-bottom:16px">
-        <div class="card${p.newLoc ? " has-new" : ""}" id="sec-loc">
-          <h2>Localization ${p.newLoc ? App.newBadge() : ""}</h2>
-          <div class="card-sub">${loc.length ? "DUC-XL-MS: graph-based propagation from curated organelle markers" : "No DUC-XL-MS assignment — UniProt annotation shown"}</div>
-          <dl class="kv">
-            ${loc.length ? `<dt>DUC-XL-MS</dt><dd><div class="chips">${App.locChips(p)}</div>${p.newLoc ? `<div class="small" style="margin-top:4px;color:var(--new-ink)">${App.locList(p.newLoc).map(App.orgLabel).map(esc).join(", ")}: not annotated in UniProt</div>` : ""}</dd>` : ""}
-            <dt>UniProt</dt><dd>${det?.upTerms?.length ? esc(det.upTerms.join("; ")) : `<span class="muted">no subcellular location</span>`}</dd>
-            <dt>Evidence</dt><dd>${pr["Annotation Source"] === "marker_seed" ? "Organelle marker (seed)" : pr["Annotation Source"] === "propagation" ? "Propagated from cross-linked markers" : "—"}</dd>
-            ${pr["Confidence Tier"] ? `<dt>Tier</dt><dd>${esc(pr["Confidence Tier"])} ${pr["Localization Class"] && pr["Localization Class"] !== "seed" ? `· ${esc(pr["Localization Class"])}` : ""}</dd>` : ""}
-            ${pr["Vote Fraction"] != null ? `<dt>Vote fraction</dt><dd class="num">${perComp(pr["Vote Fraction"], (v) => (+v).toFixed(2))}</dd>` : ""}
-            ${pr["Seeds per Compartment"] ? `<dt>Seed neighbours</dt><dd class="num">${perComp(pr["Seeds per Compartment"], (v) => v)}</dd>` : ""}
-            ${mo?.Correction ? `<dt>Curation</dt><dd>${esc(mo.Correction)}${mo.Evidence ? ` — ${esc(mo.Evidence)}` : ""}</dd>` : ""}
-            ${mt ? `<dt>Topology marker</dt><dd>${esc(mt["Topology Pole"])}${mt.Correction ? ` · ${esc(mt.Correction)}` : ""}</dd>` : ""}
-          </dl>
-          <h3 class="ext-head">Other resources</h3>
-          ${extLoc(acc, p.gene, det)}
-        </div>
-        <div class="card span2">
+      <nav class="tabs" role="tablist">${tabs.map(([id, label, isNew]) => `<button role="tab" data-tab="${id}">${label}${isNew ? ` <span class="nb">NEW</span>` : ""}</button>`).join("")}</nav>
+
+      <div class="tab-pane" data-pane="int" hidden>
+        <section class="card imap-card" style="margin-bottom:16px" id="sec-imap">
+          <h2><span>Interface map of ${esc(p.gene)} ${App.info(`Each row is a directly cross-linked partner, with the cross-linked lysine on both proteins. Unlike AP-MS co-purification or STRING association scores, every interaction here is a direct contact with a known site on both proteins. ${fmt(nInterH)} HEK293 inter-protein residue pairs.`)}</span>
+            <span class="toggles" id="imap-cell"><label><input type="checkbox" value="1" checked> HEK293</label><label><input type="checkbox" value="2" checked> Jurkat</label></span></h2>
+          <div class="imap-tools"><span>Order partners by</span><span class="seg" id="imap-sort"><button data-s="links" class="on">number of links</button><button data-s="pos">position on ${esc(p.gene)}</button></span>
+            <span class="legend" style="margin:0">${[1, 2, 3].map((k) => `<span><span class="dot" style="background:${viz.CELL_COLORS[k]};margin-right:5px"></span>${viz.CELL_LABELS[k]}</span>`).join("")}</span></div>
+          ${App.howto([
+            `Each row is one partner; the partner name is on the far right.`,
+            `Left bar: the sequence of ${esc(p.gene)} from residue 1 to ${p.len ? fmt(p.len) : "its end"}. Right bar: the partner sequence, scaled to its own length.`,
+            `Dots are cross-linked lysines; their colour gives the cell line (blue HEK293, green Jurkat, purple both).`,
+            `The histogram on top is the interface footprint: how many partners bind each region of ${esc(p.gene)}. TM helices and candidate SLiMs are marked there.`,
+            `Hover a row to draw a line for each residue pair.`])}
+          <div id="imap"></div>
+          <div class="imap-more" id="imap-more"></div>
+          ${nAug ? `<p class="small muted" style="margin:8px 0 0">${fmt(nAug)} further partner(s) come from database augmentation and have no residue-level evidence; they are listed under Interactors below.</p>` : ""}
+        </section>
+        <section class="card" style="margin-bottom:16px">
+          <h2>Interactors ${App.info(`HEK293 / Jurkat: directly cross-linked in DUC-XL-MS. "… augmented": not a cited interaction. It is reported by that database and added by our triadic-closure rule because both proteins share at least one DUC-XL-MS neighbour (listed in the last column).`)}</h2>
+          <div id="int-tbl"></div>
+        </section>
+        <section class="card" style="margin-bottom:16px">
           <h2>Interaction neighbourhood <span class="small muted">${rows.length > 70 ? "top 70 by residue pairs" : ""}</span></h2>
-          <div class="card-sub">Node colour = partner compartment (ring = second compartment); solid edges are cross-linked (width ∝ residue pairs), dashed edges are augmented.</div>
+          ${App.howto([
+            `${esc(p.gene)} is in the centre; each surrounding node is a partner.`,
+            `Node colour: the partner's compartment; a ring marks a second compartment.`,
+            `Solid edges are cross-linked, with width proportional to residue pairs; dashed edges are augmented from other resources.`])}
           <div id="ego" style="max-width:560px;margin:0 auto"></div>
           <div class="legend">${App.meta.compartments.map((c) => `<span><span class="dot" style="background:${App.orgColor(c)};margin-right:5px"></span>${esc(App.orgLabel(c))}</span>`).join("")}<span><span class="dot" style="background:var(--aug);margin-right:5px"></span>Unassigned</span></div>
-        </div>
-      </section>
-      ${det?.loops?.length ? `<section class="card${p.nov & (App.NOV.topo | App.NOV.correction) ? " has-new" : ""}" style="margin-bottom:16px" id="sec-topo">
-        <h2>Membrane topology ${p.nov & App.NOV.topo ? App.newBadge("NEW", "Loop side(s) not annotated in UniProt") : ""} ${p.nov & App.NOV.correction ? App.newBadge("CORRECTS UNIPROT", "Credible correction of the UniProt topology") : ""}</h2>
-        <div class="card-sub">${p.tm ? `${p.tm} UniProt-annotated TM helices (TRANSMEM) · ` : ""}domains between helices are named as in UniProt topology; their membrane side is assigned from cross-links to topology markers. Numbers are residue ranges.</div>
-        <div id="topo"></div>
-        <div class="legend">
-          <span><span class="sw" style="background:var(--ok);height:5px"></span>DUC-XL-MS side, agrees with UniProt</span>
-          <span><span class="sw" style="background:var(--accent);height:5px"></span>DUC-XL-MS side, not annotated in UniProt <span class="nb">NEW</span></span>
-          <span><span class="sw" style="background:var(--bad);height:5px"></span>DUC-XL-MS side, conflicts with UniProt</span>
-          <span><span class="sw" style="background:repeating-linear-gradient(90deg,var(--muted) 0 6px,transparent 6px 10px)"></span>UniProt side only (no cross-link evidence)</span>
-          <span><span class="sw" style="background:repeating-linear-gradient(90deg,var(--muted) 0 2px,transparent 2px 6px)"></span>side inferred by alternation</span>
-          <span><span class="dot" style="background:var(--ink-2);border-radius:2px;width:8px;height:14px"></span> TM helix (UniProt)</span>
-          <span><b>N</b> / <b>C</b>: protein termini</span>
-        </div>
-        <div id="topo-track" class="topo-track"></div>
-        ${det.tm?.["Inconsistent Flag"] ? `<p class="small tag-conflict" style="margin:8px 0 0">⚠ The assigned domain sides are not mutually consistent with the UniProt TM helices (dashed red helix: both flanking domains on the same side).</p>` : ""}
-        <div id="topo-tbl" style="margin-top:20px"></div>
-      </section>` : ""}
-      <section class="card" style="margin-bottom:16px">
-        <h2>Sequence view of all cross-links
-          <span class="toggles" id="cell-tg"><label><input type="checkbox" value="1" checked> HEK293</label><label><input type="checkbox" value="2" checked> Jurkat</label></span></h2>
-        <div class="card-sub">Arcs above the sequence: intra-protein links. Ticks below: inter-protein links per lysine (height ∝ number of links). Bands: membrane loops (cyan = cytosolic, gold = other side) and candidate SLiMs (orange).</div>
-        <div id="track" class="track-wrap"></div>
-        <div class="legend">${[1, 2, 3].map((k) => `<span><span class="sw" style="background:${viz.CELL_COLORS[k]}"></span>${viz.CELL_LABELS[k]}</span>`).join("")}</div>
-      </section>
-      <section class="card" style="margin-bottom:16px">
-        <h2>Interactors</h2>
-        <div class="card-sub">HEK293 / Jurkat: directly cross-linked in DUC-XL-MS. "… augmented": not a cited interaction — reported by that database and added by our triadic-closure rule because both proteins share at least one DUC-XL-MS neighbour (listed in the last column).</div>
-        <div id="int-tbl"></div>
-      </section>
-      ${det?.slims?.length ? `<section class="card has-new" style="margin-bottom:16px" id="sec-slim"><h2>Candidate short linear motifs ${App.newBadge("NEW", "Predicted by the cross-link-guided AF3 screen of this study")}</h2><div class="card-sub">AlphaFold3 SLiM screen of cross-link-supported PPIs</div><div id="slim-tbl"></div></section>` : ""}
+        </section>
+      </div>
+
+      <div class="tab-pane" data-pane="loc" hidden>
+        <section class="card${p.newLoc ? " has-new" : ""}" style="margin-bottom:16px" id="sec-loc">
+          <h2>Localization ${p.newLoc ? App.newBadge() : ""} ${App.info(loc.length ? "DUC-XL-MS: graph-based propagation from curated organelle markers along cross-link edges, compared with UniProt, OpenCell and HPA." : "No DUC-XL-MS assignment. The UniProt annotation is shown, with OpenCell and HPA for comparison.")}</h2>
+          <div class="grid g2">
+            <dl class="kv">
+              ${loc.length ? `<dt>DUC-XL-MS</dt><dd><div class="chips">${App.locChips(p)}</div>${p.newLoc ? `<div class="small" style="margin-top:4px;color:var(--new-ink)">${App.locList(p.newLoc).map(App.orgLabel).map(esc).join(", ")}: not annotated in UniProt</div>` : ""}</dd>` : ""}
+              <dt>UniProt</dt><dd>${det?.upTerms?.length ? esc(det.upTerms.join("; ")) : `<span class="muted">no subcellular location</span>`}</dd>
+              <dt>Evidence</dt><dd>${pr["Annotation Source"] === "marker_seed" ? "Organelle marker (seed)" : pr["Annotation Source"] === "propagation" ? "Propagated from cross-linked markers" : "—"}</dd>
+              ${pr["Confidence Tier"] ? `<dt>Tier</dt><dd>${esc(pr["Confidence Tier"])} ${pr["Localization Class"] && pr["Localization Class"] !== "seed" ? `· ${esc(pr["Localization Class"])}` : ""}</dd>` : ""}
+              ${pr["Vote Fraction"] != null ? `<dt>Vote fraction</dt><dd class="num">${perComp(pr["Vote Fraction"], (v) => (+v).toFixed(2))}</dd>` : ""}
+              ${pr["Seeds per Compartment"] ? `<dt>Seed neighbours</dt><dd class="num">${perComp(pr["Seeds per Compartment"], (v) => v)}</dd>` : ""}
+              ${mo?.Correction ? `<dt>Curation</dt><dd>${esc(mo.Correction)}${mo.Evidence ? ` — ${esc(mo.Evidence)}` : ""}</dd>` : ""}
+              ${mt ? `<dt>Topology marker</dt><dd>${esc(mt["Topology Pole"])}${mt.Correction ? ` · ${esc(mt.Correction)}` : ""}</dd>` : ""}
+              ${det?.contact ? `<dt>Contact site</dt><dd>candidate (${esc(det.contact["Candidate Pool"] || "")})${p.nov & N.contact ? ` ${App.newBadge("NEW", "Not in CORUM or membrane-contact-site databases")}` : ""}</dd>` : ""}
+            </dl>
+            <div><h3 class="ext-head" style="margin-top:0">Other resources</h3>${extLoc(acc, p.gene, det)}</div>
+          </div>
+        </section>
+      </div>
+
+      ${det?.loops?.length ? `<div class="tab-pane" data-pane="topo" hidden>
+        <section class="card${p.nov & (N.topo | N.correction) ? " has-new" : ""}" style="margin-bottom:16px" id="sec-topo">
+          <h2>Membrane topology ${p.nov & N.topo ? App.newBadge("NEW", "Loop side(s) not annotated in UniProt") : ""} ${p.nov & N.correction ? App.newBadge("CORRECTS UNIPROT", "Credible correction of the UniProt topology") : ""} ${App.info(`${p.tm ? `${p.tm} UniProt-annotated TM helices (TRANSMEM). ` : ""}Domains between helices are named as in the UniProt topology; their membrane side is assigned from cross-links to topology markers. Numbers are residue ranges.`)}</h2>
+          ${App.howto([
+            `The horizontal band is the membrane: the upper side is the cytoplasm, the lower side the lumen or extracellular space.`,
+            `Dark blocks are the UniProt TM helices; the segments between them are loops, drawn on the side assigned by DUC-XL-MS.`,
+            `Loop colour compares the DUC-XL-MS side with UniProt (key below); N and C mark the protein termini.`,
+            `The track under the diagram shows the UniProt annotation; the table lists the evidence per domain.`])}
+          <div id="topo"></div>
+          <div class="legend">
+            <span><span class="sw" style="background:var(--ok);height:5px"></span>DUC-XL-MS side, agrees with UniProt</span>
+            <span><span class="sw" style="background:var(--accent);height:5px"></span>DUC-XL-MS side, not annotated in UniProt <span class="nb">NEW</span></span>
+            <span><span class="sw" style="background:var(--bad);height:5px"></span>DUC-XL-MS side, conflicts with UniProt</span>
+            <span><span class="sw" style="background:repeating-linear-gradient(90deg,var(--muted) 0 6px,transparent 6px 10px)"></span>UniProt side only (no cross-link evidence)</span>
+            <span><span class="sw" style="background:repeating-linear-gradient(90deg,var(--muted) 0 2px,transparent 2px 6px)"></span>side inferred by alternation</span>
+            <span><span class="dot" style="background:var(--ink-2);border-radius:2px;width:8px;height:14px"></span> TM helix (UniProt)</span>
+            <span><b>N</b> / <b>C</b>: protein termini</span>
+          </div>
+          <div id="topo-track" class="topo-track"></div>
+          ${det.tm?.["Inconsistent Flag"] ? `<p class="small tag-conflict" style="margin:8px 0 0">⚠ The assigned domain sides are not mutually consistent with the UniProt TM helices (dashed red helix: both flanking domains on the same side).</p>` : ""}
+          <div id="topo-tbl" style="margin-top:20px"></div>
+        </section>
+      </div>` : ""}
+
+      <div class="tab-pane" data-pane="struct" hidden>
+        ${det?.slims?.length ? `<section class="card has-new" style="margin-bottom:16px" id="sec-slim"><h2>Candidate short linear motifs ${App.newBadge("NEW", "Predicted by the cross-link-guided AF3 screen of this study")} ${App.info("AlphaFold3 SLiM screen of cross-link-supported PPIs. ΔpLDDT: gain in confidence on binding; ipSAE: interface confidence.")}</h2><div id="slim-tbl"></div></section>` : ""}
+        <section class="card" style="margin-bottom:16px">
+          <h2>Sequence view of all cross-links
+            <span class="toggles" id="cell-tg"><label><input type="checkbox" value="1" checked> HEK293</label><label><input type="checkbox" value="2" checked> Jurkat</label></span></h2>
+          ${App.howto([
+            `The bar is the sequence of ${esc(p.gene)}.`,
+            `Arcs above it are intra-protein cross-links; ticks below are inter-protein cross-links per lysine, taller for more links.`,
+            `Coloured bands mark membrane loops (cyan = cytosolic, gold = other side) and candidate SLiMs (orange).`,
+            `Scroll to zoom, drag to pan, double-click to reset; at maximum zoom the amino-acid sequence appears.`])}
+          <div id="track" class="track-wrap"></div>
+          <div class="legend">${[1, 2, 3].map((k) => `<span><span class="sw" style="background:${viz.CELL_COLORS[k]}"></span>${viz.CELL_LABELS[k]}</span>`).join("")}</div>
+        </section>
+        ${cxHits.length ? `<section class="card" style="margin-bottom:16px"><h2>Complex models</h2><p style="margin:0">${cxHits.map((c) => `<a class="btn small" href="#/complex/${c.name}">${c.name} assembly model →</a>`).join(" ")}</p></section>` : ""}
+      </div>
       ${footer()}`;
 
     App.bindTips(el);
-    const im = { sort: "links", all: false };
-    const drawImap = () => {
-      const cells = $$("#imap-cell input").reduce((s, i) => s | (i.checked ? +i.value : 0), 0) || 3;
-      const r = viz.interfaceMap($("#imap"), acc, det, { len: p.len, sort: im.sort, max: im.all ? 0 : 25, cells });
-      $("#imap-more").innerHTML = r.total > 25 ? `<button class="btn small" id="imap-all">${im.all ? "Show top 25 partners" : `Show all ${fmt(r.total)} partners`}</button>` : "";
-      const b = $("#imap-all"); if (b) b.onclick = () => { im.all = !im.all; drawImap(); };
+    // each tab is drawn the first time it is shown, so its plots get the right width
+    const drawn = new Set();
+    const draw = {
+      int: () => {
+        const im = { sort: "links", all: false };
+        const drawImap = () => {
+          const cells = $$("#imap-cell input").reduce((s, i) => s | (i.checked ? +i.value : 0), 0) || 3;
+          const r = viz.interfaceMap($("#imap"), acc, det, { len: p.len, sort: im.sort, max: im.all ? 0 : 25, cells });
+          $("#imap-more").innerHTML = r.total > 25 ? `<button class="btn small" id="imap-all">${im.all ? "Show top 25 partners" : `Show all ${fmt(r.total)} partners`}</button>` : "";
+          const b = $("#imap-all"); if (b) b.onclick = () => { im.all = !im.all; drawImap(); };
+        };
+        $$("#imap-sort button").forEach((b) => (b.onclick = () => { im.sort = b.dataset.s; $$("#imap-sort button").forEach((x) => x.classList.toggle("on", x === b)); drawImap(); }));
+        $$("#imap-cell input").forEach((i) => (i.onchange = drawImap));
+        drawImap();
+        App.table($("#int-tbl"), rows, [
+          { key: "gene", label: "Partner", render: (r) => App.protLink(r.acc, r.gene) },
+          { key: "loc", label: "Compartment", value: (r) => r.loc.map(App.orgLabel).join("; "), render: (r) => r.loc.map((c) => `<span class="dot" style="background:${App.orgColor(c)}"></span> ${esc(App.orgLabel(c))}`).join(" ") || `<span class="muted">–</span>` },
+          { key: "mask", label: "Sources", value: (r) => App.srcText(r.mask), render: (r) => App.srcBadges(r.mask) },
+          { key: "rpH", label: "Residue pairs HEK293", num: true },
+          { key: "rpJ", label: "Residue pairs Jurkat", num: true },
+          { key: "common", label: "Shared neighbours (augmented)", render: (r) => esc(r.common || "") },
+        ], { sort: 3, name: `${p.gene}_interactors`, placeholder: "Filter partners…" });
+        viz.ego($("#ego"), { gene: p.gene, loc }, rows, 70);
+      },
+      loc: () => {},
+      topo: () => {
+        const topo = viz.topology($("#topo"), det, p.len, $("#topo-track"));
+        const L = det.uniprot?.len || p.len;
+        $("#topo-tbl").innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>Domain</th><th class="num">Residues</th><th>DUC-XL-MS side</th><th>UniProt (TOPO_DOM)</th><th>Comparison</th><th class="num">Residue pairs</th><th class="num">Purity</th><th>Confidence</th></tr></thead><tbody>${
+          det.loops.slice().sort((a, b) => viz.loopRange(a, L)[0] - viz.loopRange(b, L)[0]).map((l) => {
+            const [a, b] = viz.loopRange(l, L);
+            const reg = topo && topo.regs.find((r) => r.id === l["Loop ID"]);
+            const isNew = l.Agreement === "novel" || (l.Agreement === "conflict" && l["Credible Correction"] === "Yes");
+            return `<tr class="${isNew ? "row-new" : ""}"><td>${esc(viz.regionName(l["Loop ID"]))}</td><td class="num">${a}–${b}</td><td>${esc(viz.SIDE_NAMES[l["Assigned Side"]] || l["Assigned Side"])}</td><td>${esc(reg?.upNote || "not annotated")}</td><td class="tag-${esc(l.Agreement)}">${l.Agreement === "novel" ? `${App.newBadge()} not in UniProt` : l.Agreement === "conflict" && l["Credible Correction"] === "Yes" ? `${App.newBadge("CORRECTS UNIPROT")}` : l.Agreement === "conflict" ? "conflict (low confidence)" : esc(l.Agreement)}</td><td class="num">${fmt(l["Residue Pair Count"])}</td><td class="num">${l.Purity}</td><td>${esc(l.Confidence)}</td></tr>`;
+          }).join("")}</tbody></table></div>`;
+      },
+      struct: () => {
+        const drawTrack = () => {
+          const m = $$("#cell-tg input").reduce((s, i) => s | (i.checked ? +i.value : 0), 0);
+          viz.seqTrack($("#track"), acc, det, p.len, m || 3);
+        };
+        $$("#cell-tg input").forEach((i) => (i.onchange = drawTrack)); drawTrack();
+        if (det?.slims?.length) App.table($("#slim-tbl"), det.slims, [
+          { key: "Partner Gene Symbol", label: "Partner", render: (r) => App.protLink(String(r["Partner Protein ID"]).toUpperCase(), r["Partner Gene Symbol"]) },
+          { key: "Start Residue", label: "Start", num: true }, { key: "End Residue", label: "End", num: true },
+          { key: "Motif Sequence", label: "Sequence", render: (r) => `<span class="mono">${esc(r["Motif Sequence"])}</span>` },
+          { key: "dpLDDT", label: "ΔpLDDT", num: true }, { key: "Max ipSAE", label: "max ipSAE", num: true },
+          { key: "Cross-Link Count", label: "Cross-links", num: true },
+        ], { sort: 4, name: `${p.gene}_slims` });
+      },
     };
-    $$("#imap-sort button").forEach((b) => (b.onclick = () => { im.sort = b.dataset.s; $$("#imap-sort button").forEach((x) => x.classList.toggle("on", x === b)); drawImap(); }));
-    $$("#imap-cell input").forEach((i) => (i.onchange = drawImap));
-    drawImap();
-    $$("[data-jump]", el).forEach((a) => (a.onclick = (e) => { e.preventDefault(); document.getElementById(a.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); }));
-    viz.ego($("#ego"), { gene: p.gene, loc }, rows, 70);
-    if (det?.loops?.length) {
-      const topo = viz.topology($("#topo"), det, p.len, $("#topo-track"));
-      const L = det.uniprot?.len || p.len;
-      $("#topo-tbl").innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>Domain</th><th class="num">Residues</th><th>DUC-XL-MS side</th><th>UniProt (TOPO_DOM)</th><th>Comparison</th><th class="num">Residue pairs</th><th class="num">Purity</th><th>Confidence</th></tr></thead><tbody>${
-        det.loops.slice().sort((a, b) => viz.loopRange(a, L)[0] - viz.loopRange(b, L)[0]).map((l) => {
-          const [a, b] = viz.loopRange(l, L);
-          const reg = topo && topo.regs.find((r) => r.id === l["Loop ID"]);
-          const isNew = l.Agreement === "novel" || (l.Agreement === "conflict" && l["Credible Correction"] === "Yes");
-          return `<tr class="${isNew ? "row-new" : ""}"><td>${esc(viz.regionName(l["Loop ID"]))}</td><td class="num">${a}–${b}</td><td>${esc(viz.SIDE_NAMES[l["Assigned Side"]] || l["Assigned Side"])}</td><td>${esc(reg?.upNote || "not annotated")}</td><td class="tag-${esc(l.Agreement)}">${l.Agreement === "novel" ? `${App.newBadge()} not in UniProt` : l.Agreement === "conflict" && l["Credible Correction"] === "Yes" ? `${App.newBadge("CORRECTS UNIPROT")}` : l.Agreement === "conflict" ? "conflict (low confidence)" : esc(l.Agreement)}</td><td class="num">${fmt(l["Residue Pair Count"])}</td><td class="num">${l.Purity}</td><td>${esc(l.Confidence)}</td></tr>`;
-        }).join("")}</tbody></table></div>`;
-    }
-    const drawTrack = () => {
-      const m = $$("#cell-tg input").reduce((s, i) => s | (i.checked ? +i.value : 0), 0);
-      viz.seqTrack($("#track"), acc, det, p.len, m || 3);
+    const show = (id) => {
+      $$(".tabs [data-tab]", el).forEach((b) => { const on = b.dataset.tab === id; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+      $$(".tab-pane", el).forEach((pn) => (pn.hidden = pn.dataset.pane !== id));
+      if (!drawn.has(id)) { drawn.add(id); draw[id](); }
     };
-    $$("#cell-tg input").forEach((i) => (i.onchange = drawTrack)); drawTrack();
-    App.table($("#int-tbl"), rows, [
-      { key: "gene", label: "Partner", render: (r) => App.protLink(r.acc, r.gene) },
-      { key: "loc", label: "Compartment", value: (r) => r.loc.map(App.orgLabel).join("; "), render: (r) => r.loc.map((c) => `<span class="dot" style="background:${App.orgColor(c)}"></span> ${esc(App.orgLabel(c))}`).join(" ") || `<span class="muted">–</span>` },
-      { key: "mask", label: "Sources", value: (r) => App.srcText(r.mask), render: (r) => App.srcBadges(r.mask) },
-      { key: "rpH", label: "Residue pairs HEK293", num: true },
-      { key: "rpJ", label: "Residue pairs Jurkat", num: true },
-      { key: "common", label: "Shared neighbours (augmented)", render: (r) => esc(r.common || "") },
-    ], { sort: 3, name: `${p.gene}_interactors`, placeholder: "Filter partners…" });
-    if (det?.slims?.length) App.table($("#slim-tbl"), det.slims, [
-      { key: "Partner Gene Symbol", label: "Partner", render: (r) => App.protLink(String(r["Partner Protein ID"]).toUpperCase(), r["Partner Gene Symbol"]) },
-      { key: "Start Residue", label: "Start", num: true }, { key: "End Residue", label: "End", num: true },
-      { key: "Motif Sequence", label: "Sequence", render: (r) => `<span class="mono">${esc(r["Motif Sequence"])}</span>` },
-      { key: "dpLDDT", label: "ΔpLDDT", num: true }, { key: "Max ipSAE", label: "max ipSAE", num: true },
-      { key: "Cross-Link Count", label: "Cross-links", num: true },
-    ], { sort: 4, name: `${p.gene}_slims` });
+    $$(".tabs [data-tab]", el).forEach((b) => (b.onclick = () => show(b.dataset.tab)));
+    $$(".new-strip [data-tab]", el).forEach((a) => (a.onclick = (e) => { e.preventDefault(); show(a.dataset.tab); $(".tabs", el).scrollIntoView({ behavior: "smooth", block: "start" }); }));
+    show("int");
   };
 
   /* ── new findings ─────────────────────────────────────────────────────── */
