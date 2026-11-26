@@ -504,7 +504,7 @@
         <div class="card net-panel" id="net-side"></div>
       </div>`;
 
-    const HINT = "Scroll to zoom · hover a protein to see its partners · click a group or protein to zoom in · double-click a protein for the residue view · Esc or the background goes back";
+    const HINT = "Scroll to zoom · click a group or protein to zoom in · double-click a protein for the residue view · Esc or the background goes back";
     $("#net-hint").textContent = HINT;
     const G = new graphology.Graph({ multi: false, type: "undirected" });
     const aug = App.cssVar("--aug") || "#a0a3aa";
@@ -522,7 +522,7 @@
     // group names: one tiny label node per group of at least 15 proteins
     bigGroups.filter((g) => g.count >= 15).forEach((g) => G.addNode("m:" + g.id, { kind: "m", gid: g.id, x: g.x, y: g.y, label: g.label, size: 0.1 }));
 
-    const st = { src: 3, rp: 0, org: "", sel: null, neigh: new Set(), edge: null, grp: null, hover: null, hoverN: new Set(), cross: false, glab: true };
+    const st = { src: 3, rp: 0, org: "", sel: null, neigh: new Set(), edge: null, grp: null, cross: false, glab: true };
     const edgeOk = (a) => (a.mask & st.src) && (!App.isOriginal(a.mask) || a.rp >= st.rp || !(a.mask & 3));
     const nodeOk = (n, a) => !st.org || (st.org === "__none" ? !a.loc.length : a.loc.includes(st.org));
     const baseOk = (k, a) => { const [s, t] = G.extremities(k); return edgeOk(a) && nodeOk(s, G.getNodeAttributes(s)) && nodeOk(t, G.getNodeAttributes(t)); };
@@ -536,7 +536,7 @@
       nodeReducer: (n, a) => {
         const r = { ...a };
         if (a.kind === "m") {
-          r.hidden = !st.glab || st.sel != null || st.hover != null || (st.grp != null && st.grp !== a.gid);
+          r.hidden = !st.glab || st.sel != null || (st.grp != null && st.grp !== a.gid);
           r.forceLabel = true; r.color = C.bg; r.zIndex = 3;
           return r;
         }
@@ -546,10 +546,6 @@
           if (+n === st.sel) { r.highlighted = true; r.zIndex = 2; r.size = a.size + 3; }
           else if (st.neigh.has(+n)) { r.zIndex = 1; r.forceLabel = st.neigh.size < 60; }
           else r.hidden = true;
-        } else if (st.hover != null) {
-          if (+n === st.hover) { r.highlighted = true; r.zIndex = 2; r.forceLabel = true; }
-          else if (st.hoverN.has(+n)) { r.zIndex = 1; r.forceLabel = st.hoverN.size <= 40; }
-          else { r.color = C.dim; r.label = ""; r.zIndex = 0; }
         } else if (st.grp != null && a.grp !== st.grp) { r.color = C.dim; r.label = ""; r.zIndex = 0; }
         return r;
       },
@@ -562,11 +558,6 @@
         if (st.sel != null) {
           if (+s === st.sel || +t === st.sel) { r.size = Math.max(a.size, 1.2); r.color = orig ? C.ink2 : aug; r.zIndex = 1; }
           else if (st.neigh.has(+s) && st.neigh.has(+t)) { r.zIndex = 0; }   // links among partners
-          else r.hidden = true;
-          return r;
-        }
-        if (st.hover != null) {
-          if (+s === st.hover || +t === st.hover) { r.size = Math.max(a.size, 0.9); r.color = orig ? C.ink2 : aug; r.zIndex = 1; }
           else r.hidden = true;
           return r;
         }
@@ -640,7 +631,7 @@
     function select(i, fit) {
       if (i == null) return home();
       if (!nodeOk(i, G.getNodeAttributes(i))) { st.org = ""; $("#net-org").value = ""; }
-      st.sel = i; st.neigh = new Set(); st.edge = null; st.hover = null;
+      st.sel = i; st.neigh = new Set(); st.edge = null;
       G.forEachEdge(i, (k, a, s, t) => { if (edgeOk(a)) st.neigh.add(+s === i ? +t : +s); });
       const a = G.getNodeAttributes(i), acc = net.acc[i], gi = groups[a.grp];
       const partners = [...st.neigh].map((o) => {
@@ -886,15 +877,8 @@
       barSet.add(n); openSub(center);
     });
     renderer.on("clickStage", back);
-    // hovering a protein on the whole map or in a group highlights it and its partners
-    renderer.on("enterNode", ({ node }) => {
-      $("#sigma").style.cursor = "pointer";
-      if (st.sel != null || G.getNodeAttribute(node, "kind") === "m") return;
-      st.hover = +node; st.hoverN = new Set();
-      G.forEachEdge(node, (k, a, s, t) => { if (baseOk(k, a)) st.hoverN.add(+s === +node ? +t : +s); });
-      renderer.refresh();
-    });
-    renderer.on("leaveNode", () => { $("#sigma").style.cursor = ""; if (st.hover != null) { st.hover = null; renderer.refresh(); } });
+    renderer.on("enterNode", () => { $("#sigma").style.cursor = "pointer"; });
+    renderer.on("leaveNode", () => { $("#sigma").style.cursor = ""; });
     const reapply = () => { if (sub) openSub(sub.center); else if (st.sel != null) select(st.sel); else refresh(); };
     $("#net-glab").onchange = (e) => { st.glab = e.target.checked; renderer.refresh(); };
     $("#net-cross").onchange = (e) => { st.cross = e.target.checked; refresh(); };
